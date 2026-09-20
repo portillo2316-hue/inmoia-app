@@ -1,7 +1,7 @@
 import streamlit as st
 from google import genai
 
-# Configuración de la página
+# Configuración inicial de la página
 st.set_page_config(
     page_title="InmoIA Pro - Generador Inmobiliario",
     page_icon="🏠",
@@ -47,6 +47,7 @@ st.markdown("Crea la ficha web, copies para redes, mensajes de WhatsApp y guione
 if not acceso_concedido:
     st.info("👈 Por favor ingresa una clave de licencia válida en la barra lateral para desbloquear el generador.")
 else:
+    # Formulario de datos de la propiedad
     col1, col2 = st.columns(2)
     
     with col1:
@@ -61,6 +62,7 @@ else:
 
     detalles_adicionales = st.text_area("Detalles adicionales / Amenidades:", "Piscina, seguridad 24/7, vista panorámica, excelente iluminación natural.")
 
+    # Botón de Generación
     if st.button("🚀 Generar Todo el Contenido Comercial", type="primary"):
         if not gemini_api_key:
             st.error("⚠️ Por favor ingresa tu Clave API de Gemini en la barra lateral para continuar.")
@@ -69,6 +71,7 @@ else:
                 # Inicializar el cliente oficial de Gemini
                 client = genai.Client(api_key=gemini_api_key.strip())
                 
+                # Construcción del prompt
                 prompt = f"""
                 Actúa como un experto copywriter inmobiliario y especialista en marketing digital.
                 Genera contenido comercial persuasivo y profesional para el siguiente inmueble:
@@ -89,16 +92,31 @@ else:
                 """
 
                 with st.spinner("Generando contenido inmobiliario con inteligencia artificial..."):
-                    response = client.models.generate_content(
-                        model='gemini-2.5-flash',
-                        contents=prompt,
-                    )
-                    resultado_ia = response.text
+                    # Lista de modelos compatibles para intentar en orden si ocurre saturación
+                    modelos_a_intentar = ['gemini-3.6-flash', 'gemini-2.5-pro']
+                    resultado_ia = None
+                    ultimo_error = None
 
+                    for modelo in modelos_a_intentar:
+                        try:
+                            response = client.models.generate_content(
+                                model=modelo,
+                                contents=prompt,
+                            )
+                            resultado_ia = response.text
+                            break
+                        except Exception as err:
+                            ultimo_error = err
+                            continue
+
+                    if not resultado_ia:
+                        raise ultimo_error
+
+                # Mostrar resultado
                 st.success("¡Contenido generado con éxito!")
                 st.markdown("---")
                 st.markdown(resultado_ia)
                 
             except Exception as e:
                 st.error(f"Error al conectar con la IA: {e}")
-                st.info("Verifica tu clave o intenta generar nuevamente en un par de segundos.")
+                st.info("Verifica que la clave ingresada sea la correcta e intenta de nuevo.")
