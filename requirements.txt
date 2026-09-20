@@ -2,5 +2,5 @@ streamlit
 groq
 python-docx
 pandas
-streamlit-gsheets
-mercadopago
+streamlit-gsheets>=0.1.3
+mercadopago>=2.0.0
