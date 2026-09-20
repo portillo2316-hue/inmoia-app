@@ -16,7 +16,6 @@ st.sidebar.title("🔐 Acceso InmoIA Pro")
 # Sistema de validación de licencia
 clave_licencia = st.sidebar.text_input("Ingresa tu Clave de Licencia:", type="password")
 
-# Acepta variaciones comunes de la licencia de prueba
 licencias_validas = ["inmoia2026", "inmo2026", "admin"]
 
 if clave_licencia.strip().lower() in licencias_validas:
@@ -32,8 +31,7 @@ else:
 st.sidebar.markdown("---")
 st.sidebar.subheader("⚙️ Configuración de IA")
 
-# Campo para ingresar la API Key de Google AI Studio
-gemini_api_key = st.sidebar.text_input("Clave API Gemini (AIza...):", type="password")
+gemini_api_key = st.sidebar.text_input("Clave API Gemini:", type="password")
 
 idioma_contenido = st.sidebar.selectbox(
     "Idioma del contenido:",
@@ -49,7 +47,6 @@ st.markdown("Crea la ficha web, copies para redes, mensajes de WhatsApp y guione
 if not acceso_concedido:
     st.info("👈 Por favor ingresa una clave de licencia válida en la barra lateral para desbloquear el generador.")
 else:
-    # Formulario de datos de la propiedad
     col1, col2 = st.columns(2)
     
     with col1:
@@ -64,7 +61,6 @@ else:
 
     detalles_adicionales = st.text_area("Detalles adicionales / Amenidades:", "Piscina, seguridad 24/7, vista panorámica, excelente iluminación natural.")
 
-    # Botón de Generación
     if st.button("🚀 Generar Todo el Contenido Comercial", type="primary"):
         if not gemini_api_key:
             st.error("⚠️ Por favor ingresa tu Clave API de Gemini en la barra lateral para continuar.")
@@ -73,7 +69,6 @@ else:
                 # Inicializar el cliente oficial de Gemini
                 client = genai.Client(api_key=gemini_api_key.strip())
                 
-                # Construir el prompt para la IA
                 prompt = f"""
                 Actúa como un experto copywriter inmobiliario y especialista en marketing digital.
                 Genera contenido comercial persuasivo y profesional para el siguiente inmueble:
@@ -94,31 +89,16 @@ else:
                 """
 
                 with st.spinner("Generando contenido inmobiliario con inteligencia artificial..."):
-                    # Intento principal con gemini-2.5-flash y respaldo en gemini-2.5-pro
-                    modelos_a_probar = ["gemini-2.5-flash", "gemini-2.5-pro"]
-                    respuesta_exitosa = False
-                    
-                    for modelo in modelos_a_probar:
-                        try:
-                            response = client.models.generate_content(
-                                model=modelo,
-                                contents=prompt,
-                            )
-                            resultado_ia = response.text
-                            respuesta_exitosa = True
-                            break
-                        except Exception as inner_error:
-                            # Si es un error 503 o de saturación, intenta el siguiente modelo
-                            continue
-                    
-                    if not respuesta_exitosa:
-                        raise Exception("Los servidores de Gemini están experimentando alta demanda momentánea. Por favor intenta de nuevo en unos segundos.")
+                    response = client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=prompt,
+                    )
+                    resultado_ia = response.text
 
-                # Mostrar resultado en pantalla
                 st.success("¡Contenido generado con éxito!")
                 st.markdown("---")
                 st.markdown(resultado_ia)
                 
             except Exception as e:
                 st.error(f"Error al conectar con la IA: {e}")
-                st.info("Verifica que tu API Key de Gemini esté escrita correctamente.")
+                st.info("Verifica tu clave o intenta generar nuevamente en un par de segundos.")
