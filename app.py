@@ -1,64 +1,124 @@
 import streamlit as st
 from google import genai
 
-st.set_page_config(page_title="InmoIA Pro", page_icon="🏠", layout="wide")
+# Configuración de la página
+st.set_page_config(
+    page_title="InmoIA Pro - Generador Inmobiliario",
+    page_icon="🏠",
+    layout="wide"
+)
 
+# ---------------------------------------------------------
+# BARRA LATERAL: CONFIGURACIÓN Y ACCESO
+# ---------------------------------------------------------
 st.sidebar.title("🔐 Acceso InmoIA Pro")
+
+# Sistema de validación de licencia
 clave_licencia = st.sidebar.text_input("Ingresa tu Clave de Licencia:", type="password")
 
-if clave_licencia.lower() in ["inmoia2026", "inmo2026", "admin"]:
+# Acepta variaciones comunes de la licencia de prueba
+licencias_validas = ["inmoia2026", "inmo2026", "admin"]
+
+if clave_licencia.strip().lower() in licencias_validas:
     st.sidebar.success("¡Licencia Activa y Verificada!")
     acceso_concedido = True
 else:
     if clave_licencia:
-        st.sidebar.error("Clave incorrecta.")
+        st.sidebar.error("Clave de licencia incorrecta.")
+    else:
+        st.sidebar.warning("Por favor ingresa tu clave de licencia para operar.")
     acceso_concedido = False
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("⚙️ Configuración de IA")
+
+# Campo para ingresar la API Key de Google AI Studio
 gemini_api_key = st.sidebar.text_input("Clave API Gemini (AIza...):", type="password")
 
-idioma_contenido = st.sidebar.selectbox("Idioma:", ["Español", "Inglés", "Portugués"])
+idioma_contenido = st.sidebar.selectbox(
+    "Idioma del contenido:",
+    ["Español", "Inglés", "Portugués"]
+)
 
-st.title("🏠 InmoIA Global: Generador de Propiedades")
+# ---------------------------------------------------------
+# CUERPO PRINCIPAL DE LA APLICACIÓN
+# ---------------------------------------------------------
+st.title("🏠 InmoIA Global: Generador Multilingüe de Propiedades")
+st.markdown("Crea la ficha web, copies para redes, mensajes de WhatsApp y guiones de video en segundos.")
 
-if acceso_concedido:
+if not acceso_concedido:
+    st.info("👈 Por favor ingresa una clave de licencia válida en la barra lateral para desbloquear el generador.")
+else:
+    # Formulario de datos de la propiedad
     col1, col2 = st.columns(2)
+    
     with col1:
-        tipo_propiedad = st.selectbox("Tipo", ["Apartamento", "Casa", "Local", "Oficina", "Lote"])
-        precio = st.text_input("Precio", "220.000 USD")
-        ubicacion = st.text_input("Ubicación", "Medellín")
+        tipo_propiedad = st.selectbox("Tipo de Inmueble", ["Apartamento", "Casa", "Local Comercial", "Oficina", "Lote / Terreno"])
+        precio_moneda = st.text_input("Precio y Moneda", "220.000 USD")
+        ubicacion = st.text_input("Ubicación (Ciudad / Barrio)", "Medellín")
+        
     with col2:
-        area = st.text_input("Área", "90 m²")
-        garajes = st.text_input("Parqueaderos", "2")
-        hab_banos = st.text_input("Habitaciones / Baños", "3 hab, 2 baños")
+        area = st.text_input("Área construida (m² o pies²)", "90 m²")
+        garajes = st.text_input("Estacionamiento / Garajes", "2 parqueaderos")
+        habitaciones_banos = st.text_input("Habitaciones y Baños", "3 habitaciones, 2 baños")
 
-    detalles = st.text_area("Amenidades", "Piscina, seguridad 24/7, vista panorámica.")
+    detalles_adicionales = st.text_area("Detalles adicionales / Amenidades:", "Piscina, seguridad 24/7, vista panorámica, excelente iluminación natural.")
 
+    # Botón de Generación
     if st.button("🚀 Generar Todo el Contenido Comercial", type="primary"):
         if not gemini_api_key:
-            st.error("⚠️ Ingresa tu Clave API de Gemini en la barra lateral.")
+            st.error("⚠️ Por favor ingresa tu Clave API de Gemini en la barra lateral para continuar.")
         else:
             try:
-                client = genai.Client(api_key=gemini_api_key)
+                # Inicializar el cliente oficial de Gemini
+                client = genai.Client(api_key=gemini_api_key.strip())
+                
+                # Construir el prompt para la IA
                 prompt = f"""
-                Actúa como experto en marketing inmobiliario.
-                Genera la ficha web, copy para redes con hashtags y mensaje de WhatsApp para:
-                - Tipo: {tipo_propiedad}, Ubicación: {ubicacion}, Precio: {precio}
-                - Área: {area}, Garajes: {garajes}, Distribución: {hab_banos}
-                - Amenidades: {detalles}
-                - Idioma: {idioma_contenido}
+                Actúa como un experto copywriter inmobiliario y especialista en marketing digital.
+                Genera contenido comercial persuasivo y profesional para el siguiente inmueble:
+                - Tipo: {tipo_propiedad}
+                - Ubicación: {ubicacion}
+                - Precio: {precio_moneda}
+                - Área: {area}
+                - Distribución: {habitaciones_banos}
+                - Estacionamiento: {garajes}
+                - Amenidades y detalles: {detalles_adicionales}
+                - Idioma de salida: {idioma_contenido}
+
+                Estructura la respuesta clara con secciones para:
+                1. Ficha Técnica / Descripción Web persuasiva.
+                2. Copy para Redes Sociales (Instagram / Facebook con hashtags).
+                3. Mensaje corto y vendedor para WhatsApp.
+                4. Guion atractivo para un Reel o TikTok de 30 segundos.
                 """
-                
-                with st.spinner("Generando contenido con Gemini..."):
-                    response = client.models.generate_content(
-                        model='gemini-3.6-flash',
-                        contents=prompt,
-                    )
-                
+
+                with st.spinner("Generando contenido inmobiliario con inteligencia artificial..."):
+                    # Intento principal con gemini-2.5-flash y respaldo en gemini-2.5-pro
+                    modelos_a_probar = ["gemini-2.5-flash", "gemini-2.5-pro"]
+                    respuesta_exitosa = False
+                    
+                    for modelo in modelos_a_probar:
+                        try:
+                            response = client.models.generate_content(
+                                model=modelo,
+                                contents=prompt,
+                            )
+                            resultado_ia = response.text
+                            respuesta_exitosa = True
+                            break
+                        except Exception as inner_error:
+                            # Si es un error 503 o de saturación, intenta el siguiente modelo
+                            continue
+                    
+                    if not respuesta_exitosa:
+                        raise Exception("Los servidores de Gemini están experimentando alta demanda momentánea. Por favor intenta de nuevo en unos segundos.")
+
+                # Mostrar resultado en pantalla
                 st.success("¡Contenido generado con éxito!")
                 st.markdown("---")
-                st.markdown(response.text)
+                st.markdown(resultado_ia)
                 
             except Exception as e:
                 st.error(f"Error al conectar con la IA: {e}")
+                st.info("Verifica que tu API Key de Gemini esté escrita correctamente.")
