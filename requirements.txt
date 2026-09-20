@@ -1,3 +1,6 @@
 streamlit
 groq
 python-docx
+pandas
+streamlit-gsheets
+mercadopago
