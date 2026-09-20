@@ -114,7 +114,7 @@ api_key_input = st.sidebar.text_input("Clave API Groq (gsk_...):", type="passwor
 
 modelo_seleccionado = st.sidebar.selectbox(
     "Modelo de IA Activo (Groq):",
-    ["llama-3.3-70b-versatile", "llama3-8b-8192", "mixtral-8x7b-32768"]
+    ["llama-3.1-70b-versatile", "llama-3.1-8b-instant"]
 )
 
 idioma = st.sidebar.selectbox(
