@@ -16,7 +16,7 @@ st.set_page_config(
 # ---------------------------------------------------------
 st.sidebar.title("🔐 Acceso InmoIA Pro")
 
-# Lista de claves autorizadas (aquí agregas las claves que les vendas a tus clientes)
+# Lista de claves autorizadas
 CLAVES_VALIDAS = ["INMO2026", "PRO-AGENCIA", "CLIENTE1"]
 
 clave = st.sidebar.text_input("Ingresa tu Clave de Licencia:", type="password")
@@ -37,14 +37,22 @@ if clave not in CLAVES_VALIDAS:
         st.markdown("- **Soporte Multilingüe:** Contenido comercial en varios idiomas.")
 
     with col2:
-        st.markdown("### 💳 ¿Cómo adquirir tu Licencia?")
+        st.markdown("### 💳 Mediante Pago / Suscripción")
         st.write("Suscripción Mensual: **$19 USD / mes** (~$60.000 COP)")
-        st.write("Obtén tu clave de acceso inmediata al confirmar tu suscripción.")
+        st.markdown("---")
+        st.markdown("#### 📱 Métodos de Pago Directos:")
+        st.markdown(" - **Nequi:** `3164142727`")
+        st.markdown(" - **PSE / Cuenta:** `3164142727`")
+        st.markdown("---")
+        st.write("Obtén tu clave de acceso inmediata enviando tu comprobante de pago por WhatsApp.")
         
-        # Puedes cambiar el enlace a tu WhatsApp o pasarela de pago
-        st.link_button("👉 Comprar Licencia por WhatsApp", "https://wa.me/573000000000?text=Hola,%20quiero%20comprar%20mi%20licencia%20de%20InmoIA")
+        mi_numero_whatsapp = "573164142727" 
+        mensaje = "Hola,%20ya%20realicé%20el%20pago.%20Quiero%20mi%20clave%20de%20licencia%20para%20InmoIA%20Pro."
+        link_wa = f"https://wa.me/{mi_numero_whatsapp}?text={mensaje}"
+        
+        st.link_button("📲 Confirmar Pago por WhatsApp", link_wa)
 
-    st.stop() # Detiene la ejecución aquí si no hay clave activa
+    st.stop() # Detiene la ejecución si no hay clave activa
 
 # ---------------------------------------------------------
 # 3. APLICACIÓN PRINCIPAL (SOLO PARA USUARIOS PAGADOS)
