@@ -3,7 +3,6 @@ import docx
 from docx import Document
 from io import BytesIO
 from groq import Groq
-from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime, timedelta
 import mercadopago
@@ -28,53 +27,19 @@ query_params = st.query_params
 payment_status = query_params.get("collection_status", None)
 
 if payment_status == "approved":
-    # El pago fue aprobado. Generamos una clave automática temporal para este usuario
     sufijo_aleatorio = datetime.now().strftime("%d%H%M")
     nueva_clave = f"PRO-{sufijo_aleatorio}"
-    
-    # Registramos la clave automáticamente en Google Sheets con vigencia a 30 días
-    try:
-        conn = st.connection("gsheets", type=GSheetsConnection)
-        df = conn.read(ttl=0)
-        
-        nuevo_registro = pd.DataFrame([{
-            "clave": nueva_clave,
-            "vencimiento": (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%d")
-        }])
-        
-        df_updated = pd.concat([df, nuevo_registro], ignore_index=True)
-        conn.update(data=df_updated)
-        
-        st.success(f"🎉 ¡Pago Exitoso! Tu nueva clave de licencia es: **{nueva_clave}** (Cópiala y guárdala).")
-    except Exception as e:
-        st.warning(f"Pago aprobado pero hubo un error registrando la licencia automática. Tu clave temporal es: `INMO2026`. Error: {e}")
+    st.success(f"🎉 ¡Pago Exitoso! Tu nueva clave de licencia temporal es: **{nueva_clave}** (Cópiala y guárdala).")
 
 clave = st.sidebar.text_input("Ingresa tu Clave de Licencia:", type="password")
 
 def validar_licencia(codigo_ingresado):
     if not codigo_ingresado:
         return False, "Ingresa una clave."
-    try:
-        conn = st.connection("gsheets", type=GSheetsConnection)
-        df = conn.read(ttl=0)
-        
-        match = df[df['clave'].astype(str).str.strip() == codigo_ingresado.strip()]
-        
-        if match.empty:
-            return False, "❌ Clave de licencia inválida o no registrada."
-        
-        fecha_vencimiento_str = str(match.iloc[0]['vencimiento'])
-        fecha_vencimiento = datetime.strptime(fecha_vencimiento_str.split()[0], "%Y-%m-%d").date()
-        
-        hoy = datetime.now().date()
-        if hoy > fecha_vencimiento:
-            return False, f"⚠️ Tu licencia venció el {fecha_vencimiento}. Por favor renueva tu suscripción."
-            
+    # Licencia maestra y temporales de acceso garantizado
+    if codigo_ingresado.startswith("PRO-") or codigo_ingresado == "INMO2026":
         return True, "✅ Licencia activa."
-    except Exception as e:
-        if codigo_ingresado == "INMO2026":
-            return True, "✅ Licencia temporal activa."
-        return False, f"Error validando licencia: {e}"
+    return False, "❌ Clave de licencia inválida o no registrada."
 
 acceso_concedido = False
 mensaje_estado = ""
@@ -103,13 +68,10 @@ if not acceso_concedido:
         st.write("Suscripción Mensual: **$60.000 COP (~$19 USD)**")
         st.markdown("Paga de forma inmediata con **Nequi, PSE o Tarjeta** y obtén tu clave al instante.")
         
-        # Botón dinámico de Mercado Pago
         if st.button("🚀 Pagar con Mercado Pago (Nequi / PSE / Tarjeta)", type="primary"):
             try:
                 sdk = mercadopago.SDK(MP_ACCESS_TOKEN)
-                
-                # Obtener la URL actual de tu aplicación en Streamlit Cloud
-                base_url = "https://inmoia-app.streamlit.app" # Reemplaza con tu URL exacta si cambia
+                base_url = "https://inmoia-app.streamlit.app"
                 
                 preference_data = {
                     "items": [
@@ -132,7 +94,6 @@ if not acceso_concedido:
                 preference = preference_response["response"]
                 init_point = preference["init_point"]
                 
-                # Redirigir al usuario al checkout de Mercado Pago
                 st.markdown(f'<meta http-equiv="refresh" content="0;url={init_point}">', unsafe_allow_html=True)
                 st.success("Redirigiendo a la pasarela segura de pago...")
             except Exception as e:
