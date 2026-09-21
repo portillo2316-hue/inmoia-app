@@ -4,13 +4,13 @@ import time
 
 # Configuración inicial de la página
 st.set_page_config(
-    page_title="InmoIA Pro - Generador Inmobiliario con IA",
+    page_title="InmoIA Pro - Global Real Estate AI",
     page_icon="🏠",
     layout="wide"
 )
 
 # ---------------------------------------------------------
-# GESTIÓN DE PARÁMETROS URL
+# GESTIÓN DE PARÁMETROS URL (Para auto-acceso tras pago)
 # ---------------------------------------------------------
 query_params = st.query_params
 url_access = query_params.get("access", "")
@@ -18,7 +18,7 @@ url_access = query_params.get("access", "")
 # ---------------------------------------------------------
 # BARRA LATERAL: ACCESO, PRECIO Y MÉTODOS DE PAGO
 # ---------------------------------------------------------
-st.sidebar.title("🔐 Acceso Clientes")
+st.sidebar.title("🔐 Acceso Clientes / Global")
 
 clave_licencia = st.sidebar.text_input("Clave de Licencia:", type="password", value=url_access)
 licencias_validas = ["inmoia2026", "inmo2026", "admin"]
@@ -36,8 +36,8 @@ else:
     st.sidebar.markdown("---")
     st.sidebar.subheader("💳 Suscripción InmoIA Pro")
     st.sidebar.markdown("""
-    * **Valor mensual:** `$50.000 COP`
-    * **Métodos habilitados:** Nequi, PSE, Tarjetas
+    * **Valor mensual:** `$50.000 COP` / `15 USD`
+    * **Métodos habilitados:** Nequi, PSE, Tarjetas (Global)
     """)
     
     st.sidebar.markdown(
@@ -65,64 +65,80 @@ else:
     )
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("⚙️ Configuración IA")
+st.sidebar.subheader("⚙️ Configuración IA Global")
 gemini_api_key = st.sidebar.text_input("Clave API Gemini:", type="password")
-idioma_contenido = st.sidebar.selectbox("Idioma de salida:", ["Español", "Inglés", "Portugués"])
+
+# Selector de idiomas expandido para alcance mundial
+idioma_contenido = st.sidebar.selectbox(
+    "🌍 Idioma del Contenido:", 
+    ["Español", "English (Inglés)", "Português (Portugués)", "Français (Francés)", "Deutsch (Alemán)", "Italiano"]
+)
 
 # ---------------------------------------------------------
 # CUERPO PRINCIPAL (LANDING PAGE PÚBLICA)
 # ---------------------------------------------------------
-st.title("🏠 InmoIA Pro: El Superpoder de las Inmobiliarias con Inteligencia Artificial")
-st.markdown("### Multiplica tus ventas creando descripciones persuasivas, copies para redes y guiones de video en segundos.")
+st.title("🏠 InmoIA Pro: El Superpoder Global para Inmobiliarias con IA")
+st.markdown("### Multiplica tus ventas creando descripciones persuasivas, copies para redes y guiones de video en segundos y en cualquier idioma.")
 
 col_a, col_b, col_c = st.columns(3)
 with col_a:
     st.markdown("✨ **Fichas Web Persuasivas**")
-    st.caption("Redactadas por expertos para enamorar a los compradores desde el primer párrafo.")
+    st.caption("Redactadas por expertos para enamorar compradores internacionales.")
 with col_b:
     st.markdown("📱 **Redes Sociales & WhatsApp**")
-    st.caption("Copies listos para Instagram, Facebook y chats de ventas con un solo clic.")
+    st.caption("Copies listos para Instagram, Facebook y chats globales.")
 with col_c:
     st.markdown("🎬 **Guiones para Reels / TikTok**")
-    st.caption("Estructuras de video diseñadas para captar la atención de inmediato.")
+    st.caption("Estructuras de video diseñadas para captar atención masiva.")
 
 st.markdown("---")
 
+with st.expander("🚀 Conoce todo lo que incluye InmoIA Pro (Funciones Globales)"):
+    st.markdown("""
+    * 🎯 **Personalización Automática:** Adaptación al perfil del cliente (familias, inversores globales, jóvenes).
+    * 🌍 **Multilingüe Real:** Genera contenido nativo adaptado a los mercados de América, Europa y más.
+    * 📱 **Respuestas Rápidas para WhatsApp:** Sugerencias automáticas de textos para cerrar ventas en chats.
+    """)
+
 # ---------------------------------------------------------
-# ZONA PROTEGIDA
+# ZONA PROTEGIDA (SOLO CON LICENCIA ACTIVA)
 # ---------------------------------------------------------
 if not acceso_concedido:
-    st.info("💡 **Vista previa bloqueada.** Adquiere tu suscripción con el botón azul de Mercado Pago o ingresa tu clave de licencia en la barra lateral para desbloquear el generador.")
+    st.info("💡 **Vista previa bloqueada.** Adquiere tu suscripción o ingresa tu clave de licencia en la barra lateral para desbloquear el generador global.")
     
     with st.expander("👀 Ver ejemplo de lo que genera InmoIA Pro"):
         st.markdown("""
-        * **Ficha Web:** *Espectacular apartamento moderno en Medellín con vista panorámica...*
-        * **WhatsApp:** *¡Oportunidad única! Apartamento de 90m² con piscina y seguridad 24/7...*
-        * **Reel/TikTok:** *[Gancho de 3 segundos] ¿Buscas el hogar de sueños en la mejor zona? Mira esto...*
+        * **Ficha Web:** *Espectacular apartamento moderno con vista panorámica...*
+        * **WhatsApp:** *¡Oportunidad única! Apartamento de 90m² con piscina...*
+        * **Reel/TikTok:** *[Gancho global] ¿Buscas el hogar de tus sueños? Mira esto...*
         """)
 else:
-    st.success("🚀 ¡Bienvenido al panel operativo de InmoIA Pro! Configura los datos de tu inmueble abajo:")
+    st.success("🚀 ¡Bienvenido al panel operativo global de InmoIA Pro! Configura los datos de tu inmueble:")
     
     col1, col2 = st.columns(2)
     with col1:
-        tipo_propiedad = st.selectbox("Tipo de Inmueble", ["Apartamento", "Casa", "Local Comercial", "Oficina", "Lote / Terreno"])
+        tipo_propiedad = st.selectbox("Tipo de Inmueble", ["Apartamento / Apartment", "Casa / House", "Local Comercial / Commercial", "Oficina / Office", "Lote / Land"])
         precio_moneda = st.text_input("Precio y Moneda", "220.000 USD")
-        ubicacion = st.text_input("Ubicación (Ciudad / Barrio)", "Medellín")
+        ubicacion = st.text_input("Ubicación (Ciudad / País)", "Miami / Medellín")
+        perfil_cliente = st.selectbox("🎯 Perfil del Cliente Objetivo", ["Familias", "Inversionistas Globales", "Jóvenes profesionales", "Expatriados / Turistas"])
         
     with col2:
         area = st.text_input("Área construida", "90 m²")
         garajes = st.text_input("Estacionamiento / Garajes", "2 parqueaderos")
         habitaciones_banos = st.text_input("Habitaciones y Baños", "3 habitaciones, 2 baños")
+        tono_comercial = st.selectbox("🗣️ Tono del Copy", ["Persuasivo y Emocional", "Corporativo y Elegante", "Urgente / Alta Conversión"])
 
     detalles_adicionales = st.text_area("Detalles adicionales / Amenidades:", "Piscina, seguridad 24/7, vista panorámica, excelente iluminación natural.")
 
-    if st.button("🚀 Generar Todo el Contenido Comercial", type="primary"):
+    if st.button("🚀 Generar Contenido Comercial Global", type="primary"):
         if not gemini_api_key:
             st.error("⚠️ Por favor ingresa tu Clave API de Gemini en la barra lateral para continuar.")
         else:
             prompt = f"""
-            Actúa como un experto copywriter inmobiliario y especialista en marketing digital.
-            Genera contenido comercial persuasivo y profesional para el siguiente inmueble:
+            Actúa como un experto copywriter inmobiliario internacional y especialista en marketing digital global.
+            Genera contenido comercial persuasivo y profesional adaptado estrictamente al siguiente idioma de salida: {idioma_contenido}.
+            
+            Datos del inmueble:
             - Tipo: {tipo_propiedad}
             - Ubicación: {ubicacion}
             - Precio: {precio_moneda}
@@ -130,41 +146,50 @@ else:
             - Distribución: {habitaciones_banos}
             - Estacionamiento: {garajes}
             - Amenidades y detalles: {detalles_adicionales}
-            - Idioma de salida: {idioma_contenido}
+            - Perfil del Comprador Objetivo: {perfil_cliente}
+            - Tono Comercial: {tono_comercial}
 
-            Estructura la respuesta clara con secciones para:
-            1. Ficha Técnica / Descripción Web persuasiva.
-            2. Copy para Redes Sociales (Instagram / Facebook con hashtags).
-            3. Mensaje corto y vendedor para WhatsApp.
-            4. Guion atractivo para un Reel o TikTok de 30 segundos.
+            Estructura la respuesta de manera impecable en {idioma_contenido} con las siguientes secciones:
+            1. 🏡 **Ficha Técnica & Descripción Web Persuasiva**
+            2. 📱 **Copy para Redes Sociales (con hashtags globales)**
+            3. 💬 **Mensaje Vendedor para WhatsApp**
+            4. 🤖 **Respuestas Rápidas Conversacionales para Chat**
+            5. 🎬 **Guion para Reel / TikTok (30 seg)**
             """
 
-            # Intento con reintento automático si hay alta demanda (503)
+            # Sistema robusto con doble respaldo de modelos (gemini-3.6-flash y gemini-2.5-flash)
+            modelos_a_probar = ["gemini-3.6-flash", "gemini-2.5-flash"]
             exito = False
             resultado_ia = ""
+            error_msg = ""
+            
             client = genai.Client(api_key=gemini_api_key.strip())
             
-            with st.spinner("Conectando con la inteligencia artificial de Gemini..."):
-                for intento in range(2):
-                    try:
-                        response = client.models.generate_content(
-                            model="gemini-3.6-flash",
-                            contents=prompt,
-                        )
-                        resultado_ia = response.text
-                        exito = True
-                        break
-                    except Exception as e:
-                        if "503" in str(e) and intento == 0:
-                            time.sleep(2) # Espera 2 segundos y reintenta
-                            continue
-                        else:
+            with st.spinner(f"Generando contenido global en {idioma_contenido} con IA..."):
+                for modelo in modelos_a_probar:
+                    for intento in range(2):
+                        try:
+                            response = client.models.generate_content(
+                                model=modelo,
+                                contents=prompt,
+                            )
+                            resultado_ia = response.text
+                            exito = True
+                            break
+                        except Exception as e:
                             error_msg = str(e)
+                            if "503" in str(e) and intento == 0:
+                                time.sleep(1.5)
+                                continue
+                            else:
+                                break
+                    if exito:
+                        break
 
             if exito:
-                st.success("¡Contenido generado con éxito!")
+                st.success("¡Contenido global generado con éxito!")
                 st.markdown("---")
                 st.markdown(resultado_ia)
             else:
-                st.error(f"Error temporal por alta demanda en los servidores de la IA: {error_msg}")
+                st.error(f"Error temporal en los servidores de la IA: {error_msg}")
                 st.info("Por favor, vuelve a hacer clic en el botón de generar en unos segundos.")
