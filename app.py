@@ -1,4 +1,72 @@
-# Botón de Generación
+import streamlit as st
+from google import genai
+
+# Configuración inicial de la página
+st.set_page_config(
+    page_title="InmoIA Pro - Generador Inmobiliario",
+    page_icon="🏠",
+    layout="wide"
+)
+
+# ---------------------------------------------------------
+# BARRA LATERAL: CONFIGURACIÓN Y ACCESO
+# ---------------------------------------------------------
+st.sidebar.title("🔐 Acceso InmoIA Pro")
+
+# Sistema de validación de licencia
+clave_licencia = st.sidebar.text_input("Ingresa tu Clave de Licencia:", type="password")
+
+licencias_validas = ["inmoia2026", "inmo2026", "admin"]
+
+if clave_licencia.strip().lower() in licencias_validas:
+    st.sidebar.success("¡Licencia Activa y Verificada!")
+    acceso_concedido = True
+else:
+    acceso_concedido = False
+    if clave_licencia:
+        st.sidebar.error("Clave de licencia incorrecta.")
+    else:
+        st.sidebar.warning("Por favor ingresa tu clave de licencia para operar.")
+        
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("💳 ¿Adquirir Licencia?")
+    st.sidebar.info("Comunícate con soporte para habilitar tu acceso mensual de forma inmediata.")
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("⚙️ Configuración de IA")
+
+gemini_api_key = st.sidebar.text_input("Clave API Gemini:", type="password")
+
+idioma_contenido = st.sidebar.selectbox(
+    "Idioma del contenido:",
+    ["Español", "Inglés", "Portugués"]
+)
+
+# ---------------------------------------------------------
+# CUERPO PRINCIPAL DE LA APLICACIÓN
+# ---------------------------------------------------------
+st.title("🏠 InmoIA Global: Generador Multilingüe de Propiedades")
+st.markdown("Crea la ficha web, copies para redes, mensajes de WhatsApp y guiones de video en segundos.")
+
+if not acceso_concedido:
+    st.info("👈 Por favor ingresa una clave de licencia válida en la barra lateral para desbloquear el generador.")
+else:
+    # Formulario de datos de la propiedad
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        tipo_propiedad = st.selectbox("Tipo de Inmueble", ["Apartamento", "Casa", "Local Comercial", "Oficina", "Lote / Terreno"])
+        precio_moneda = st.text_input("Precio y Moneda", "220.000 USD")
+        ubicacion = st.text_input("Ubicación (Ciudad / Barrio)", "Medellín")
+        
+    with col2:
+        area = st.text_input("Área construida (m² o pies²)", "90 m²")
+        garajes = st.text_input("Estacionamiento / Garajes", "2 parqueaderos")
+        habitaciones_banos = st.text_input("Habitaciones y Baños", "3 habitaciones, 2 baños")
+
+    detalles_adicionales = st.text_area("Detalles adicionales / Amenidades:", "Piscina, seguridad 24/7, vista panorámica, excelente iluminación natural.")
+
+    # Botón de Generación
     if st.button("🚀 Generar Todo el Contenido Comercial", type="primary"):
         if not gemini_api_key:
             st.error("⚠️ Por favor ingresa tu Clave API de Gemini en la barra lateral para continuar.")
