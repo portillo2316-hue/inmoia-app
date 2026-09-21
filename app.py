@@ -22,11 +22,15 @@ if clave_licencia.strip().lower() in licencias_validas:
     st.sidebar.success("¡Licencia Activa y Verificada!")
     acceso_concedido = True
 else:
+    acceso_concedido = False
     if clave_licencia:
         st.sidebar.error("Clave de licencia incorrecta.")
     else:
         st.sidebar.warning("Por favor ingresa tu clave de licencia para operar.")
-    acceso_concedido = False
+        
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("💳 ¿Adquirir Licencia?")
+    st.sidebar.info("Comunícate con soporte para habilitar tu acceso mensual de forma inmediata.")
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("⚙️ Configuración de IA")
@@ -92,7 +96,6 @@ else:
                 """
 
                 with st.spinner("Generando contenido inmobiliario con inteligencia artificial..."):
-                    # Lista de modelos compatibles para intentar en orden si ocurre saturación
                     modelos_a_intentar = ['gemini-3.6-flash', 'gemini-2.5-pro']
                     resultado_ia = None
                     ultimo_error = None
@@ -119,4 +122,4 @@ else:
                 
             except Exception as e:
                 st.error(f"Error al conectar con la IA: {e}")
-                st.info("Verifica que la clave ingresada sea la correcta e intenta de nuevo.")
+                st.info("Verifica que tu clave API de Gemini sea correcta e intenta de nuevo.")
