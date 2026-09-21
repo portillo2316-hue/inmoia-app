@@ -78,7 +78,7 @@ else:
 
                 with st.spinner("Generando contenido inmobiliario con inteligencia artificial..."):
                     response = client.models.generate_content(
-                        model="gemini-2.5-flash",
+                        model="gemini-3.6-flash",
                         contents=prompt,
                     )
                     resultado_ia = response.text
