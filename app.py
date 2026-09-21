@@ -68,7 +68,6 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("⚙️ Configuración IA Global")
 gemini_api_key = st.sidebar.text_input("Clave API Gemini:", type="password")
 
-# Selector de idiomas expandido para alcance mundial
 idioma_contenido = st.sidebar.selectbox(
     "🌍 Idioma del Contenido:", 
     ["Español", "English (Inglés)", "Português (Portugués)", "Français (Francés)", "Deutsch (Alemán)", "Italiano"]
@@ -101,7 +100,7 @@ with st.expander("🚀 Conoce todo lo que incluye InmoIA Pro (Funciones Globales
     """)
 
 # ---------------------------------------------------------
-# ZONA PROTEGIDA (SOLO CON LICENCIA ACTIVA)
+# ZONA PROTEGIDA
 # ---------------------------------------------------------
 if not acceso_concedido:
     st.info("💡 **Vista previa bloqueada.** Adquiere tu suscripción o ingresa tu clave de licencia en la barra lateral para desbloquear el generador global.")
@@ -157,8 +156,8 @@ else:
             5. 🎬 **Guion para Reel / TikTok (30 seg)**
             """
 
-            # Sistema robusto con doble respaldo de modelos (gemini-3.6-flash y gemini-2.5-flash)
-            modelos_a_probar = ["gemini-3.6-flash", "gemini-2.5-flash"]
+            # Modelos estables con doble respaldo automático
+            modelos_a_probar = ["gemini-3.8-flash", "gemini-3.6-flash"]
             exito = False
             resultado_ia = ""
             error_msg = ""
@@ -191,5 +190,5 @@ else:
                 st.markdown("---")
                 st.markdown(resultado_ia)
             else:
-                st.error(f"Error temporal en los servidores de la IA: {error_msg}")
-                st.info("Por favor, vuelve a hacer clic en el botón de generar en unos segundos.")
+                st.error(f"Error al conectar con la IA: {error_msg}")
+                st.info("Por favor, vuelve a hacer clic en el botón de generar.")
