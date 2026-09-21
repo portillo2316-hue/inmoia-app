@@ -9,14 +9,20 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# BARRA LATERAL: ACCESO Y CONFIGURACIÓN
+# GESTIÓN DE PARÁMETROS URL (Para auto-acceso tras pago en pasarela)
+# ---------------------------------------------------------
+query_params = st.query_params
+url_access = query_params.get("access", "")
+
+# ---------------------------------------------------------
+# BARRA LATERAL: ACCESO, PRECIO Y MÉTODOS DE PAGO
 # ---------------------------------------------------------
 st.sidebar.title("🔐 Acceso Clientes")
 
-clave_licencia = st.sidebar.text_input("Clave de Licencia:", type="password")
+clave_licencia = st.sidebar.text_input("Clave de Licencia:", type="password", value=url_access)
 licencias_validas = ["inmoia2026", "inmo2026", "admin"]
 
-if clave_licencia.strip().lower() in licencias_validas:
+if clave_licencia.strip().lower() in licencias_validas or url_access:
     st.sidebar.success("¡Licencia Activa y Verificada!")
     acceso_concedido = True
 else:
@@ -24,11 +30,39 @@ else:
     if clave_licencia:
         st.sidebar.error("Licencia incorrecta.")
     else:
-        st.sidebar.warning("Ingresa tu licencia para desbloquear el generador.")
+        st.sidebar.warning("Ingresa tu licencia o adquiere tu acceso.")
     
     st.sidebar.markdown("---")
-    st.sidebar.subheader("💳 ¿Quieres tu acceso?")
-    st.sidebar.info("Obtén tu licencia mensual y automatiza tus inmuebles hoy mismo.")
+    st.sidebar.subheader("💳 Suscripción InmoIA Pro")
+    st.sidebar.markdown("""
+    * **Valor mensual:** `$50.000 COP`
+    * **Métodos habilitados:** Nequi, PSE, Tarjetas
+    """)
+    
+    # Botón de Mercado Pago (Reemplaza el enlace de ejemplo por tu link real de cobro)
+    st.sidebar.markdown(
+        """
+        <a href="https://mpago.li/tutu-link-de-ejemplo" target="_blank">
+            <div style="display: flex; align-items: center; justify-content: center; background-color: #009EE3; color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
+                💳 Pagar con PSE / Mercado Pago
+            </div>
+        </a>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("📱 **Pago por Nequi (`316 414 2727`):** Si prefieres Nequi, escríbenos al WhatsApp con tu comprobante para entregarte tu clave manual.")
+    st.sidebar.markdown(
+        """
+        <a href="https://wa.me/573164142727?text=Hola,%20pagué%20por%20Nequi,%20quiero%20mi%20clave%20de%20InmoIA%20Pro" target="_blank">
+            <div style="display: flex; align-items: center; justify-content: center; background-color: #25D366; color: white; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px;">
+                💬 Soporte Nequi WhatsApp
+            </div>
+        </a>
+        """,
+        unsafe_allow_html=True
+    )
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("⚙️ Configuración IA")
@@ -41,7 +75,6 @@ idioma_contenido = st.sidebar.selectbox("Idioma de salida:", ["Español", "Ingl�
 st.title("🏠 InmoIA Pro: El Superpoder de las Inmobiliarias con Inteligencia Artificial")
 st.markdown("### Multiplica tus ventas creando descripciones persuasivas, copies para redes y guiones de video en segundos.")
 
-# Sección pública de venta / enganche para cualquier visitante
 col_a, col_b, col_c = st.columns(3)
 with col_a:
     st.markdown("✨ **Fichas Web Persuasivas**")
@@ -59,7 +92,7 @@ st.markdown("---")
 # ZONA PROTEGIDA (SOLO CON LICENCIA ACTIVA)
 # ---------------------------------------------------------
 if not acceso_concedido:
-    st.info("💡 **Vista previa bloqueada.** Para acceder al generador de contenido y empezar a crear fichas comerciales, ingresa una clave de licencia válida en la barra lateral izquierda.")
+    st.info("💡 **Vista previa bloqueada.** Adquiere tu suscripción con el botón azul de Mercado Pago o ingresa tu clave de licencia en la barra lateral para desbloquear el generador.")
     
     with st.expander("👀 Ver ejemplo de lo que genera InmoIA Pro"):
         st.markdown("""
@@ -110,7 +143,6 @@ else:
                 """
 
                 with st.spinner("Generando contenido inmobiliario con inteligencia artificial..."):
-                    # AQUÍ ESTÁ EL CAMBIO CLAVE QUE EXIGE LA API:
                     response = client.models.generate_content(
                         model="gemini-3.6-flash",
                         contents=prompt,
