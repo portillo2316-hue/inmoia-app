@@ -61,7 +61,6 @@ st.markdown("---")
 if not acceso_concedido:
     st.info("💡 **Vista previa bloqueada.** Para acceder al generador de contenido y empezar a crear fichas comerciales, ingresa una clave de licencia válida en la barra lateral izquierda.")
     
-    # Ejemplo visual para que el cliente sepa qué se está perdiendo
     with st.expander("👀 Ver ejemplo de lo que genera InmoIA Pro"):
         st.markdown("""
         * **Ficha Web:** *Espectacular apartamento moderno en Medellín con vista panorámica...*
@@ -111,8 +110,9 @@ else:
                 """
 
                 with st.spinner("Generando contenido inmobiliario con inteligencia artificial..."):
+                    # AQUÍ ESTÁ EL CAMBIO CLAVE QUE EXIGE LA API:
                     response = client.models.generate_content(
-                        model="gemini-2.5-flash",
+                        model="gemini-3.6-flash",
                         contents=prompt,
                     )
                     resultado_ia = response.text
