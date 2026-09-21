@@ -1,5 +1,6 @@
 import streamlit as st
 from google import genai
+import time
 
 # Configuración inicial de la página
 st.set_page_config(
@@ -9,7 +10,7 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# GESTIÓN DE PARÁMETROS URL (Para auto-acceso tras pago en pasarela)
+# GESTIÓN DE PARÁMETROS URL
 # ---------------------------------------------------------
 query_params = st.query_params
 url_access = query_params.get("access", "")
@@ -39,7 +40,6 @@ else:
     * **Métodos habilitados:** Nequi, PSE, Tarjetas
     """)
     
-    # Botón de Mercado Pago (Reemplaza el enlace de ejemplo por tu link real de cobro)
     st.sidebar.markdown(
         """
         <a href="https://mpago.li/tutu-link-de-ejemplo" target="_blank">
@@ -52,7 +52,7 @@ else:
     )
     
     st.sidebar.markdown("---")
-    st.sidebar.markdown("📱 **Pago por Nequi (`316 414 2727`):** Si prefieres Nequi, escríbenos al WhatsApp con tu comprobante para entregarte tu clave manual.")
+    st.sidebar.markdown("📱 **Pago por Nequi (`3164142727`):** Escríbenos al WhatsApp con tu comprobante para entregarte tu clave manual.")
     st.sidebar.markdown(
         """
         <a href="https://wa.me/573164142727?text=Hola,%20pagué%20por%20Nequi,%20quiero%20mi%20clave%20de%20InmoIA%20Pro" target="_blank">
@@ -70,7 +70,7 @@ gemini_api_key = st.sidebar.text_input("Clave API Gemini:", type="password")
 idioma_contenido = st.sidebar.selectbox("Idioma de salida:", ["Español", "Inglés", "Portugués"])
 
 # ---------------------------------------------------------
-# CUERPO PRINCIPAL (LANDING PAGE PÚBLICA + HERO)
+# CUERPO PRINCIPAL (LANDING PAGE PÚBLICA)
 # ---------------------------------------------------------
 st.title("🏠 InmoIA Pro: El Superpoder de las Inmobiliarias con Inteligencia Artificial")
 st.markdown("### Multiplica tus ventas creando descripciones persuasivas, copies para redes y guiones de video en segundos.")
@@ -89,7 +89,7 @@ with col_c:
 st.markdown("---")
 
 # ---------------------------------------------------------
-# ZONA PROTEGIDA (SOLO CON LICENCIA ACTIVA)
+# ZONA PROTEGIDA
 # ---------------------------------------------------------
 if not acceso_concedido:
     st.info("💡 **Vista previa bloqueada.** Adquiere tu suscripción con el botón azul de Mercado Pago o ingresa tu clave de licencia en la barra lateral para desbloquear el generador.")
@@ -98,7 +98,7 @@ if not acceso_concedido:
         st.markdown("""
         * **Ficha Web:** *Espectacular apartamento moderno en Medellín con vista panorámica...*
         * **WhatsApp:** *¡Oportunidad única! Apartamento de 90m² con piscina y seguridad 24/7...*
-        * **Reel/TikTok:** *[Gancho de 3 segundos] ¿Buscas el hogar de tus sueños en la mejor zona? Mira esto...*
+        * **Reel/TikTok:** *[Gancho de 3 segundos] ¿Buscas el hogar de sueños en la mejor zona? Mira esto...*
         """)
 else:
     st.success("🚀 ¡Bienvenido al panel operativo de InmoIA Pro! Configura los datos de tu inmueble abajo:")
@@ -120,39 +120,51 @@ else:
         if not gemini_api_key:
             st.error("⚠️ Por favor ingresa tu Clave API de Gemini en la barra lateral para continuar.")
         else:
-            try:
-                client = genai.Client(api_key=gemini_api_key.strip())
-                
-                prompt = f"""
-                Actúa como un experto copywriter inmobiliario y especialista en marketing digital.
-                Genera contenido comercial persuasivo y profesional para el siguiente inmueble:
-                - Tipo: {tipo_propiedad}
-                - Ubicación: {ubicacion}
-                - Precio: {precio_moneda}
-                - Área: {area}
-                - Distribución: {habitaciones_banos}
-                - Estacionamiento: {garajes}
-                - Amenidades y detalles: {detalles_adicionales}
-                - Idioma de salida: {idioma_contenido}
+            prompt = f"""
+            Actúa como un experto copywriter inmobiliario y especialista en marketing digital.
+            Genera contenido comercial persuasivo y profesional para el siguiente inmueble:
+            - Tipo: {tipo_propiedad}
+            - Ubicación: {ubicacion}
+            - Precio: {precio_moneda}
+            - Área: {area}
+            - Distribución: {habitaciones_banos}
+            - Estacionamiento: {garajes}
+            - Amenidades y detalles: {detalles_adicionales}
+            - Idioma de salida: {idioma_contenido}
 
-                Estructura la respuesta clara con secciones para:
-                1. Ficha Técnica / Descripción Web persuasiva.
-                2. Copy para Redes Sociales (Instagram / Facebook con hashtags).
-                3. Mensaje corto y vendedor para WhatsApp.
-                4. Guion atractivo para un Reel o TikTok de 30 segundos.
-                """
+            Estructura la respuesta clara con secciones para:
+            1. Ficha Técnica / Descripción Web persuasiva.
+            2. Copy para Redes Sociales (Instagram / Facebook con hashtags).
+            3. Mensaje corto y vendedor para WhatsApp.
+            4. Guion atractivo para un Reel o TikTok de 30 segundos.
+            """
 
-                with st.spinner("Generando contenido inmobiliario con inteligencia artificial..."):
-                    response = client.models.generate_content(
-                        model="gemini-3.6-flash",
-                        contents=prompt,
-                    )
-                    resultado_ia = response.text
+            # Intento con reintento automático si hay alta demanda (503)
+            exito = False
+            resultado_ia = ""
+            client = genai.Client(api_key=gemini_api_key.strip())
+            
+            with st.spinner("Conectando con la inteligencia artificial de Gemini..."):
+                for intento in range(2):
+                    try:
+                        response = client.models.generate_content(
+                            model="gemini-3.6-flash",
+                            contents=prompt,
+                        )
+                        resultado_ia = response.text
+                        exito = True
+                        break
+                    except Exception as e:
+                        if "503" in str(e) and intento == 0:
+                            time.sleep(2) # Espera 2 segundos y reintenta
+                            continue
+                        else:
+                            error_msg = str(e)
 
+            if exito:
                 st.success("¡Contenido generado con éxito!")
                 st.markdown("---")
                 st.markdown(resultado_ia)
-                
-            except Exception as e:
-                st.error(f"Error al conectar con la IA: {e}")
-                st.info("Verifica que tu clave API de Gemini sea correcta e intenta de nuevo.")
+            else:
+                st.error(f"Error temporal por alta demanda en los servidores de la IA: {error_msg}")
+                st.info("Por favor, vuelve a hacer clic en el botón de generar en unos segundos.")
