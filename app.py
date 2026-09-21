@@ -2,861 +2,1160 @@ import streamlit as st
 from google import genai
 import sqlite3
 import time
+from datetime import datetime
 
-# =========================================================
-# CONFIGURACIÓN
-# =========================================================
+
+# ============================================================
+# CONFIGURACIÓN GENERAL
+# ============================================================
 
 st.set_page_config(
     page_title="InmoIA Pro - Global Real Estate AI",
     page_icon="🏠",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
+
 
 DB_NAME = "inmoia.db"
 
 
-# =========================================================
-# BASE DE DATOS SQLITE
-# =========================================================
+# ============================================================
+# MODELOS GEMINI
+# ============================================================
+#
+# No dependemos de un solo modelo.
+#
+# Si un modelo devuelve 503 / 429 / 404, el sistema intenta
+# automáticamente con el siguiente.
+#
+# Google actualmente mantiene estos modelos disponibles:
+# - gemini-3.5-flash
+# - gemini-3.6-flash
+# - gemini-3.5-flash-lite
+# - gemini-3.1-flash-lite
+# - gemini-2.5-flash
+#
+# Para InmoIA utilizamos primero modelos Flash y luego Lite
+# como respaldo.
+# ============================================================
+
+MODELOS_GEMINI = [
+    "gemini-3.5-flash",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
+]
+
+
+# ============================================================
+# BASE DE DATOS
+# ============================================================
 
 def conectar_db():
+    """
+    Abre conexión con SQLite.
+    """
     return sqlite3.connect(DB_NAME)
 
 
 def crear_tablas():
-    conexion = conectar_db()
-    cursor = conexion.cursor()
+    """
+    Crea la tabla de propiedades si todavía no existe.
+    """
 
-    cursor.execute("""
+    conn = conectar_db()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS propiedades (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            titulo TEXT NOT NULL,
+            ciudad TEXT NOT NULL,
             tipo TEXT NOT NULL,
-            precio TEXT,
-            ubicacion TEXT,
-            area TEXT,
-            garajes TEXT,
-            habitaciones_banos TEXT,
-            amenidades TEXT,
-            fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            precio TEXT NOT NULL,
+            habitaciones INTEGER DEFAULT 0,
+            banos INTEGER DEFAULT 0,
+            area REAL DEFAULT 0,
+            descripcion TEXT,
+            fecha_creacion TEXT
         )
-    """)
+        """
+    )
 
-    conexion.commit()
-    conexion.close()
+    conn.commit()
+    conn.close()
 
 
 def guardar_propiedad(
+    titulo,
+    ciudad,
     tipo,
     precio,
-    ubicacion,
+    habitaciones,
+    banos,
     area,
-    garajes,
-    habitaciones_banos,
-    amenidades
+    descripcion,
 ):
-    conexion = conectar_db()
-    cursor = conexion.cursor()
+    """
+    Guarda una propiedad en SQLite.
+    """
 
-    cursor.execute("""
+    conn = conectar_db()
+    cursor = conn.cursor()
+
+    fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    cursor.execute(
+        """
         INSERT INTO propiedades (
+            titulo,
+            ciudad,
             tipo,
             precio,
-            ubicacion,
+            habitaciones,
+            banos,
             area,
-            garajes,
-            habitaciones_banos,
-            amenidades
+            descripcion,
+            fecha_creacion
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (
-        tipo,
-        precio,
-        ubicacion,
-        area,
-        garajes,
-        habitaciones_banos,
-        amenidades
-    ))
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            titulo,
+            ciudad,
+            tipo,
+            precio,
+            habitaciones,
+            banos,
+            area,
+            descripcion,
+            fecha,
+        ),
+    )
 
-    conexion.commit()
-    conexion.close()
+    conn.commit()
+    conn.close()
 
 
 def obtener_propiedades():
-    conexion = conectar_db()
-    cursor = conexion.cursor()
+    """
+    Obtiene todas las propiedades guardadas.
+    """
 
-    cursor.execute("""
+    conn = conectar_db()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
         SELECT
             id,
+            titulo,
+            ciudad,
             tipo,
             precio,
-            ubicacion,
+            habitaciones,
+            banos,
             area,
-            garajes,
-            habitaciones_banos,
-            amenidades
+            descripcion,
+            fecha_creacion
         FROM propiedades
         ORDER BY id DESC
-    """)
+        """
+    )
 
     propiedades = cursor.fetchall()
 
-    conexion.close()
+    conn.close()
 
     return propiedades
 
 
-def eliminar_propiedad(id_propiedad):
-    conexion = conectar_db()
-    cursor = conexion.cursor()
+def obtener_propiedad_por_id(propiedad_id):
+    """
+    Obtiene una propiedad específica.
+    """
+
+    conn = conectar_db()
+    cursor = conn.cursor()
 
     cursor.execute(
-        "DELETE FROM propiedades WHERE id = ?",
-        (id_propiedad,)
+        """
+        SELECT
+            id,
+            titulo,
+            ciudad,
+            tipo,
+            precio,
+            habitaciones,
+            banos,
+            area,
+            descripcion,
+            fecha_creacion
+        FROM propiedades
+        WHERE id = ?
+        """,
+        (propiedad_id,),
     )
 
-    conexion.commit()
-    conexion.close()
+    propiedad = cursor.fetchone()
+
+    conn.close()
+
+    return propiedad
 
 
-# Crear las tablas al iniciar la aplicación
+def eliminar_propiedad(propiedad_id):
+    """
+    Elimina una propiedad.
+    """
+
+    conn = conectar_db()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        DELETE FROM propiedades
+        WHERE id = ?
+        """,
+        (propiedad_id,),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+# Crear base de datos y tabla
 crear_tablas()
 
 
-# =========================================================
-# GESTIÓN DE PARÁMETROS URL
-# =========================================================
+# ============================================================
+# FUNCIONES GEMINI
+# ============================================================
 
-query_params = st.query_params
-url_access = query_params.get("access", "")
+def detectar_tipo_error(error):
+    """
+    Intenta identificar el tipo de error devuelto por Gemini.
+    """
+
+    mensaje = str(error).lower()
+
+    if "429" in mensaje:
+        return "429"
+
+    if "503" in mensaje:
+        return "503"
+
+    if "500" in mensaje:
+        return "500"
+
+    if "404" in mensaje:
+        return "404"
+
+    if "401" in mensaje:
+        return "401"
+
+    if "403" in mensaje:
+        return "403"
+
+    if "400" in mensaje:
+        return "400"
+
+    return "otro"
 
 
-# =========================================================
-# BARRA LATERAL
-# =========================================================
+def error_es_reintentable(error):
+    """
+    Determina si conviene volver a intentar o pasar al siguiente modelo.
+    """
 
-st.sidebar.title("🔐 Acceso Clientes")
+    tipo = detectar_tipo_error(error)
 
-clave_licencia = st.sidebar.text_input(
-    "Clave de Licencia:",
-    type="password",
-    value=url_access
-)
+    return tipo in ["429", "500", "503", "404"]
 
-licencias_validas = [
-    "inmoia2026",
-    "inmo2026",
-    "admin"
-]
 
-if clave_licencia.strip().lower() in licencias_validas:
-    st.sidebar.success("¡Licencia Activa y Verificada!")
-    acceso_concedido = True
-else:
-    acceso_concedido = False
+def generar_con_ia(api_key, prompt):
+    """
+    Función central de IA de InmoIA Pro.
 
-    if clave_licencia:
-        st.sidebar.error("Licencia incorrecta.")
+    Esta función:
+    1. Recibe la API Key.
+    2. Prueba el primer modelo.
+    3. Si falla temporalmente, reintenta.
+    4. Si continúa fallando, cambia de modelo.
+    5. Devuelve el texto generado.
+
+    Así el resto de la aplicación NO necesita saber qué modelo
+    de Gemini está utilizando.
+    """
+
+    if not api_key:
+        return {
+            "ok": False,
+            "texto": "",
+            "modelo": "",
+            "error": "No se proporcionó una API Key de Gemini.",
+        }
+
+    try:
+        client = genai.Client(api_key=api_key)
+    except Exception as error:
+        return {
+            "ok": False,
+            "texto": "",
+            "modelo": "",
+            "error": f"No fue posible conectar con Gemini: {error}",
+        }
+
+    errores = []
+
+    # Recorremos todos los modelos
+    for modelo in MODELOS_GEMINI:
+
+        # Máximo 2 intentos por modelo
+        for intento in range(2):
+
+            try:
+
+                respuesta = client.models.generate_content(
+                    model=modelo,
+                    contents=prompt,
+                )
+
+                texto = getattr(respuesta, "text", None)
+
+                if texto and texto.strip():
+
+                    return {
+                        "ok": True,
+                        "texto": texto.strip(),
+                        "modelo": modelo,
+                        "error": "",
+                    }
+
+                errores.append(
+                    f"{modelo}: respuesta vacía"
+                )
+
+                break
+
+            except Exception as error:
+
+                tipo_error = detectar_tipo_error(error)
+
+                errores.append(
+                    f"{modelo}: error {tipo_error}"
+                )
+
+                # Errores de autenticación/configuración.
+                # No tiene sentido probar 5 modelos si la API Key
+                # está incorrecta.
+                if tipo_error in ["400", "401", "403"]:
+
+                    return {
+                        "ok": False,
+                        "texto": "",
+                        "modelo": modelo,
+                        "error": (
+                            "Gemini rechazó la solicitud. "
+                            "Verifica que tu API Key sea correcta "
+                            "y tenga acceso a la Gemini API.\n\n"
+                            f"Detalle: {error}"
+                        ),
+                    }
+
+                # Si es un error temporal, hacemos retry.
+                if error_es_reintentable(error):
+
+                    if intento == 0:
+                        time.sleep(2)
+                        continue
+
+                    # Después del segundo intento,
+                    # pasamos al siguiente modelo.
+                    break
+
+                # Error desconocido.
+                break
+
+    return {
+        "ok": False,
+        "texto": "",
+        "modelo": "",
+        "error": (
+            "En este momento no fue posible generar el contenido "
+            "con los modelos disponibles.\n\n"
+            "El sistema probó automáticamente varios modelos de Gemini.\n\n"
+            f"Diagnóstico técnico: {', '.join(errores)}"
+        ),
+    }
+
+
+# ============================================================
+# SIDEBAR
+# ============================================================
+
+with st.sidebar:
+
+    st.title("🏠 InmoIA Pro")
+
+    st.caption("Global Real Estate AI")
+
+    st.divider()
+
+    st.subheader("🔐 Acceso")
+
+    licencia = st.text_input(
+        "Licencia",
+        type="password",
+        placeholder="Introduce tu licencia",
+    )
+
+    # Licencias actuales de desarrollo
+    LICENCIAS_VALIDAS = [
+        "inmoia2026",
+        "inmo2026",
+        "admin",
+    ]
+
+    acceso = licencia in LICENCIAS_VALIDAS
+
+    if acceso:
+        st.success("Licencia válida")
+
     else:
-        st.sidebar.warning(
-            "Ingresa tu licencia para activar el software."
+        st.info(
+            "Introduce una licencia válida para acceder "
+            "al panel."
         )
 
+    st.divider()
 
-st.sidebar.markdown("---")
+    st.subheader("🤖 Configuración IA")
 
-st.sidebar.subheader("⚙️ Configuración IA Global")
+    api_key = st.text_input(
+        "Gemini API Key",
+        type="password",
+        placeholder="AIza...",
+        help="Durante el desarrollo puedes introducir aquí tu API Key.",
+    )
 
-gemini_api_key = st.sidebar.text_input(
-    "Clave API Gemini:",
-    type="password"
+    if api_key:
+        st.success("API Key recibida")
+
+    st.divider()
+
+    idioma = st.selectbox(
+        "🌎 Idioma",
+        [
+            "Español",
+            "English",
+        ],
+    )
+
+    st.divider()
+
+    st.caption(
+        "InmoIA Pro © 2026"
+    )
+
+
+# ============================================================
+# ENCABEZADO
+# ============================================================
+
+st.title("🏠 InmoIA Pro")
+
+st.subheader(
+    "La inteligencia artificial para agentes inmobiliarios"
 )
 
-idioma_contenido = st.sidebar.selectbox(
-    "🌍 Idioma del Contenido:",
+st.write(
+    """
+    Crea descripciones de propiedades, publicaciones para redes,
+    mensajes comerciales y guiones para videos utilizando IA.
+    """
+)
+
+
+# ============================================================
+# PÁGINA DE INICIO SI NO HAY ACCESO
+# ============================================================
+
+if not acceso:
+
+    st.divider()
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown(
+            """
+            ### 🏡 Propiedades
+
+            Guarda y organiza tus propiedades
+            inmobiliarias.
+            """
+        )
+
+    with col2:
+        st.markdown(
+            """
+            ### 🤖 Inteligencia Artificial
+
+            Genera contenido comercial
+            automáticamente.
+            """
+        )
+
+    with col3:
+        st.markdown(
+            """
+            ### 📱 Redes y WhatsApp
+
+            Crea textos listos para publicar
+            y enviar a clientes.
+            """
+        )
+
+    st.divider()
+
+    st.subheader("💰 Plan InmoIA Pro")
+
+    precio_col1, precio_col2 = st.columns(2)
+
+    with precio_col1:
+
+        st.markdown(
+            """
+            ## $50.000 COP
+
+            **por mes**
+
+            Incluye:
+
+            - Gestión de propiedades
+            - Generación de contenido con IA
+            - Textos para redes sociales
+            - Mensajes para WhatsApp
+            - Guiones para Reels/TikTok
+            """
+        )
+
+    with precio_col2:
+
+        st.markdown("### 💳 Métodos de pago")
+
+        st.write(
+            "Mercado Pago"
+        )
+
+        st.code(
+            "https://mpago.li/tutu-link-de-ejemplo"
+        )
+
+        st.write(
+            "Nequi"
+        )
+
+        st.code(
+            "316 414 2727"
+        )
+
+        st.markdown(
+            """
+            ### 📲 WhatsApp
+
+            [Escribir por WhatsApp](https://wa.me/573164142727)
+            """
+        )
+
+    st.info(
+        "Introduce tu licencia en el menú lateral "
+        "para entrar al sistema."
+    )
+
+    st.stop()
+
+
+# ============================================================
+# PANEL PRINCIPAL
+# ============================================================
+
+st.success("Bienvenido a InmoIA Pro 🚀")
+
+tab_propiedades, tab_ia = st.tabs(
     [
-        "Español",
-        "English (Inglés)",
-        "Português (Portugués)",
-        "Français (Francés)",
-        "Deutsch (Alemán)",
-        "Italiano"
+        "🏠 Mis Propiedades",
+        "🤖 Generador IA",
     ]
 )
 
 
-# =========================================================
-# ENCABEZADO
-# =========================================================
+# ============================================================
+# TAB 1 - PROPIEDADES
+# ============================================================
 
-st.title(
-    "🏠 InmoIA Pro: El Superpoder Global para Inmobiliarias con IA"
-)
+with tab_propiedades:
 
-st.markdown(
-    "### Multiplica tus ventas creando descripciones persuasivas, "
-    "copies para redes y guiones de video en segundos."
-)
+    st.header("🏠 Mis Propiedades")
 
-
-# =========================================================
-# BENEFICIOS
-# =========================================================
-
-col_a, col_b, col_c = st.columns(3)
-
-with col_a:
-    st.markdown("✨ **Fichas Web Persuasivas**")
-    st.caption(
-        "Redactadas con IA para presentar mejor tus propiedades."
+    st.write(
+        "Guarda las propiedades que posteriormente "
+        "utilizarás para generar contenido."
     )
 
-with col_b:
-    st.markdown("📱 **Redes Sociales & WhatsApp**")
-    st.caption(
-        "Copies listos para Instagram, Facebook y chats."
+    st.divider()
+
+    st.subheader("➕ Registrar nueva propiedad")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        titulo = st.text_input(
+            "Título de la propiedad",
+            placeholder="Apartamento moderno en el norte",
+        )
+
+        ciudad = st.text_input(
+            "Ciudad",
+            placeholder="Cali",
+        )
+
+        tipo = st.selectbox(
+            "Tipo de propiedad",
+            [
+                "Apartamento",
+                "Casa",
+                "Oficina",
+                "Local comercial",
+                "Lote",
+                "Finca",
+                "Bodega",
+                "Penthouse",
+                "Otro",
+            ],
+        )
+
+        precio = st.text_input(
+            "Precio",
+            placeholder="$350.000.000",
+        )
+
+    with col2:
+
+        habitaciones = st.number_input(
+            "Habitaciones",
+            min_value=0,
+            max_value=100,
+            value=3,
+            step=1,
+        )
+
+        banos = st.number_input(
+            "Baños",
+            min_value=0,
+            max_value=100,
+            value=2,
+            step=1,
+        )
+
+        area = st.number_input(
+            "Área en m²",
+            min_value=0.0,
+            max_value=100000.0,
+            value=80.0,
+            step=1.0,
+        )
+
+    descripcion = st.text_area(
+        "Descripción de la propiedad",
+        placeholder=(
+            "Describe las características principales, "
+            "ubicación, acabados, zonas sociales, parqueadero, "
+            "vista, seguridad, etc."
+        ),
+        height=150,
     )
 
-with col_c:
-    st.markdown("🎬 **Guiones para Reels / TikTok**")
-    st.caption(
-        "Guiones diseñados para captar la atención."
-    )
-
-
-st.markdown("---")
-
-
-# =========================================================
-# PLANES Y PAGOS
-# =========================================================
-
-st.subheader("💳 Planes y Suscripción InmoIA Pro")
-
-col_pago1, col_pago2 = st.columns(2)
-
-with col_pago1:
-
-    st.markdown("""
-    #### 🚀 Acceso Mensual
-
-    **Precio:** `$50.000 COP` / `15 USD` al mes
-
-    **Incluye:**
-
-    - Generación multilingüe
-    - Perfiles de clientes objetivo
-    - Respuestas para WhatsApp
-    - Guiones para redes
-    - Herramientas de IA inmobiliaria
-    """)
-
-    st.markdown(
-        """
-        <a href="https://mpago.li/tutu-link-de-ejemplo"
-        target="_blank">
-            <div style="
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                background-color:#009EE3;
-                color:white;
-                padding:12px 20px;
-                border-radius:8px;
-                text-decoration:none;
-                font-weight:bold;
-                font-size:16px;">
-                💳 Pagar Suscripción
-            </div>
-        </a>
-        """,
-        unsafe_allow_html=True
-    )
-
-
-with col_pago2:
-
-    st.markdown("""
-    #### 📱 Pago Directo por Nequi
-
-    **Número Nequi:** `316 414 2727`
-
-    Realiza la transferencia de `$50.000 COP`
-    y envíanos el comprobante por WhatsApp.
-    """)
-
-    st.markdown(
-        """
-        <a href="https://wa.me/573164142727"
-        target="_blank">
-            <div style="
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                background-color:#25D366;
-                color:white;
-                padding:12px 20px;
-                border-radius:8px;
-                text-decoration:none;
-                font-weight:bold;
-                font-size:16px;">
-                💬 Enviar Comprobante por WhatsApp
-            </div>
-        </a>
-        """,
-        unsafe_allow_html=True
-    )
-
-
-st.markdown("---")
-
-
-# =========================================================
-# ZONA PÚBLICA
-# =========================================================
-
-if not acceso_concedido:
-
-    st.info(
-        "💡 **El generador está bloqueado.** "
-        "Ingresa una licencia válida para acceder al panel."
-    )
-
-    with st.expander("👀 Ver ejemplo del contenido generado"):
-
-        st.markdown("""
-        **Ficha Web**
-
-        Espectacular apartamento moderno con vista panorámica...
-
-        **WhatsApp**
-
-        ¡Oportunidad única! Apartamento de 90m² con piscina...
-
-        **Reel/TikTok**
-
-        ¿Buscas el hogar de tus sueños? Mira esto...
-        """)
-
-
-# =========================================================
-# ZONA PROTEGIDA
-# =========================================================
-
-else:
-
-    st.success(
-        "🚀 ¡Bienvenido al panel operativo de InmoIA Pro!"
-    )
-
-    # =====================================================
-    # TABS PRINCIPALES
-    # =====================================================
-
-    tab_propiedades, tab_generador = st.tabs([
-        "🏠 Mis Propiedades",
-        "🤖 Generador IA"
-    ])
-
-
-    # =====================================================
-    # TAB PROPIEDADES
-    # =====================================================
-
-    with tab_propiedades:
-
-        st.header("🏠 Mis Propiedades")
-
-        tab_nueva, tab_lista = st.tabs([
-            "➕ Nueva Propiedad",
-            "📋 Mis Propiedades"
-        ])
-
-
-        # -------------------------------------------------
-        # NUEVA PROPIEDAD
-        # -------------------------------------------------
-
-        with tab_nueva:
-
-            st.subheader("Registrar nueva propiedad")
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-
-                tipo_propiedad = st.selectbox(
-                    "Tipo de Inmueble",
-                    [
-                        "Apartamento",
-                        "Casa",
-                        "Local Comercial",
-                        "Oficina",
-                        "Lote"
-                    ]
-                )
-
-                precio = st.text_input(
-                    "Precio y Moneda",
-                    "220.000 USD"
-                )
-
-                ubicacion = st.text_input(
-                    "Ubicación",
-                    "Medellín, Colombia"
-                )
-
-                area = st.text_input(
-                    "Área construida",
-                    "90 m²"
-                )
-
-
-            with col2:
-
-                garajes = st.text_input(
-                    "Estacionamiento / Garajes",
-                    "2 parqueaderos"
-                )
-
-                habitaciones_banos = st.text_input(
-                    "Habitaciones y Baños",
-                    "3 habitaciones, 2 baños"
-                )
-
-                amenidades = st.text_area(
-                    "Amenidades",
-                    "Piscina, seguridad 24/7, "
-                    "vista panorámica, excelente iluminación natural."
-                )
-
-
-            if st.button(
-                "💾 Guardar Propiedad",
-                type="primary"
-            ):
-
-                if not ubicacion.strip():
-
-                    st.error(
-                        "La ubicación es obligatoria."
-                    )
-
-                else:
-
-                    guardar_propiedad(
-                        tipo_propiedad,
-                        precio,
-                        ubicacion,
-                        area,
-                        garajes,
-                        habitaciones_banos,
-                        amenidades
-                    )
-
-                    st.success(
-                        "✅ Propiedad guardada correctamente."
-                    )
-
-
-        # -------------------------------------------------
-        # LISTA DE PROPIEDADES
-        # -------------------------------------------------
-
-        with tab_lista:
-
-            st.subheader("📋 Propiedades registradas")
-
-            propiedades = obtener_propiedades()
-
-            if not propiedades:
-
-                st.info(
-                    "Todavía no tienes propiedades registradas."
-                )
-
-            else:
-
-                for propiedad in propiedades:
-
-                    (
-                        id_propiedad,
-                        tipo,
-                        precio,
-                        ubicacion,
-                        area,
-                        garajes,
-                        habitaciones_banos,
-                        amenidades
-                    ) = propiedad
-
-
-                    with st.expander(
-                        f"🏠 {tipo} | {ubicacion} | {precio}"
-                    ):
-
-                        col_info, col_accion = st.columns(
-                            [4, 1]
-                        )
-
-                        with col_info:
-
-                            st.write(
-                                f"**ID:** {id_propiedad}"
-                            )
-
-                            st.write(
-                                f"**Tipo:** {tipo}"
-                            )
-
-                            st.write(
-                                f"**Precio:** {precio}"
-                            )
-
-                            st.write(
-                                f"**Ubicación:** {ubicacion}"
-                            )
-
-                            st.write(
-                                f"**Área:** {area}"
-                            )
-
-                            st.write(
-                                f"**Garajes:** {garajes}"
-                            )
-
-                            st.write(
-                                f"**Distribución:** "
-                                f"{habitaciones_banos}"
-                            )
-
-                            st.write(
-                                f"**Amenidades:** {amenidades}"
-                            )
-
-
-                        with col_accion:
-
-                            if st.button(
-                                "🗑️ Eliminar",
-                                key=f"eliminar_{id_propiedad}"
-                            ):
-
-                                eliminar_propiedad(
-                                    id_propiedad
-                                )
-
-                                st.success(
-                                    "Propiedad eliminada."
-                                )
-
-                                st.rerun()
-
-
-    # =====================================================
-    # TAB GENERADOR IA
-    # =====================================================
-
-    with tab_generador:
-
-        st.header("🤖 Generador de Contenido IA")
-
-        propiedades = obtener_propiedades()
-
-        if not propiedades:
-
-            st.warning(
-                "Primero debes registrar al menos "
-                "una propiedad."
+    st.divider()
+
+    if st.button(
+        "💾 Guardar propiedad",
+        type="primary",
+        use_container_width=True,
+    ):
+
+        if not titulo.strip():
+            st.error(
+                "Debes introducir el título de la propiedad."
+            )
+
+        elif not ciudad.strip():
+            st.error(
+                "Debes introducir la ciudad."
+            )
+
+        elif not precio.strip():
+            st.error(
+                "Debes introducir el precio."
             )
 
         else:
 
-            opciones_propiedades = {}
+            try:
 
-            for propiedad in propiedades:
-
-                (
-                    id_propiedad,
-                    tipo,
-                    precio,
-                    ubicacion,
-                    area,
-                    garajes,
-                    habitaciones_banos,
-                    amenidades
-                ) = propiedad
-
-                etiqueta = (
-                    f"#{id_propiedad} - "
-                    f"{tipo} - "
-                    f"{ubicacion} - "
-                    f"{precio}"
+                guardar_propiedad(
+                    titulo=titulo.strip(),
+                    ciudad=ciudad.strip(),
+                    tipo=tipo,
+                    precio=precio.strip(),
+                    habitaciones=int(habitaciones),
+                    banos=int(banos),
+                    area=float(area),
+                    descripcion=descripcion.strip(),
                 )
 
-                opciones_propiedades[etiqueta] = propiedad
+                st.success(
+                    "✅ Propiedad guardada correctamente."
+                )
 
+                st.rerun()
 
-            propiedad_seleccionada = st.selectbox(
-                "🏠 Selecciona la propiedad",
-                list(opciones_propiedades.keys())
-            )
+            except Exception as error:
 
+                st.error(
+                    f"No fue posible guardar la propiedad: {error}"
+                )
 
-            propiedad = opciones_propiedades[
-                propiedad_seleccionada
-            ]
+    st.divider()
 
+    st.subheader("📋 Propiedades guardadas")
+
+    propiedades = obtener_propiedades()
+
+    if not propiedades:
+
+        st.info(
+            "Todavía no tienes propiedades guardadas."
+        )
+
+    else:
+
+        for propiedad in propiedades:
 
             (
-                id_propiedad,
-                tipo_propiedad,
-                precio_moneda,
-                ubicacion,
-                area,
-                garajes,
-                habitaciones_banos,
-                detalles_adicionales
+                propiedad_id,
+                titulo_db,
+                ciudad_db,
+                tipo_db,
+                precio_db,
+                habitaciones_db,
+                banos_db,
+                area_db,
+                descripcion_db,
+                fecha_db,
             ) = propiedad
 
-
-            st.markdown("### Datos de la propiedad")
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-
-                st.write(
-                    f"**Tipo:** {tipo_propiedad}"
-                )
-
-                st.write(
-                    f"**Precio:** {precio_moneda}"
-                )
-
-                st.write(
-                    f"**Ubicación:** {ubicacion}"
-                )
-
-                st.write(
-                    f"**Área:** {area}"
-                )
-
-
-            with col2:
-
-                st.write(
-                    f"**Garajes:** {garajes}"
-                )
-
-                st.write(
-                    f"**Distribución:** "
-                    f"{habitaciones_banos}"
-                )
-
-                st.write(
-                    f"**Amenidades:** "
-                    f"{detalles_adicionales}"
-                )
-
-
-            perfil_cliente = st.selectbox(
-                "🎯 Perfil del Cliente Objetivo",
-                [
-                    "Familias",
-                    "Inversionistas Globales",
-                    "Jóvenes profesionales",
-                    "Expatriados / Turistas"
-                ]
-            )
-
-
-            tono_comercial = st.selectbox(
-                "🗣️ Tono del Copy",
-                [
-                    "Persuasivo y Emocional",
-                    "Corporativo y Elegante",
-                    "Urgente / Alta Conversión"
-                ]
-            )
-
-
-            if st.button(
-                "🚀 Generar Contenido Comercial Global",
-                type="primary"
+            with st.expander(
+                f"🏠 {titulo_db} — {ciudad_db}"
             ):
 
-                if not gemini_api_key:
+                col1, col2, col3, col4 = st.columns(4)
+
+                with col1:
+                    st.write("**Tipo**")
+                    st.write(tipo_db)
+
+                with col2:
+                    st.write("**Precio**")
+                    st.write(precio_db)
+
+                with col3:
+                    st.write("**Habitaciones**")
+                    st.write(habitaciones_db)
+
+                with col4:
+                    st.write("**Área**")
+                    st.write(f"{area_db} m²")
+
+                st.write(
+                    f"**Baños:** {banos_db}"
+                )
+
+                if descripcion_db:
+                    st.write(
+                        "**Descripción:**"
+                    )
+                    st.write(
+                        descripcion_db
+                    )
+
+                st.caption(
+                    f"Registrada: {fecha_db}"
+                )
+
+                confirmar = st.checkbox(
+                    "Confirmar eliminación",
+                    key=f"confirmar_{propiedad_id}",
+                )
+
+                if st.button(
+                    "🗑️ Eliminar propiedad",
+                    key=f"eliminar_{propiedad_id}",
+                ):
+
+                    if confirmar:
+
+                        eliminar_propiedad(
+                            propiedad_id
+                        )
+
+                        st.success(
+                            "Propiedad eliminada."
+                        )
+
+                        st.rerun()
+
+                    else:
+
+                        st.warning(
+                            "Marca 'Confirmar eliminación' "
+                            "antes de eliminar."
+                        )
+
+
+# ============================================================
+# TAB 2 - GENERADOR IA
+# ============================================================
+
+with tab_ia:
+
+    st.header("🤖 Generador de contenido con IA")
+
+    st.write(
+        """
+        Selecciona una propiedad y el tipo de contenido
+        que deseas generar.
+        """
+    )
+
+    st.divider()
+
+    propiedades = obtener_propiedades()
+
+    if not propiedades:
+
+        st.warning(
+            "Primero debes registrar al menos una propiedad "
+            "en la sección 'Mis Propiedades'."
+        )
+
+    else:
+
+        # ----------------------------------------------------
+        # SELECTOR DE PROPIEDAD
+        # ----------------------------------------------------
+
+        opciones_propiedades = {}
+
+        for propiedad in propiedades:
+
+            (
+                propiedad_id,
+                titulo_db,
+                ciudad_db,
+                tipo_db,
+                precio_db,
+                habitaciones_db,
+                banos_db,
+                area_db,
+                descripcion_db,
+                fecha_db,
+            ) = propiedad
+
+            etiqueta = (
+                f"{titulo_db} | "
+                f"{ciudad_db} | "
+                f"{precio_db}"
+            )
+
+            opciones_propiedades[etiqueta] = propiedad_id
+
+        propiedad_seleccionada = st.selectbox(
+            "🏠 Selecciona una propiedad",
+            list(opciones_propiedades.keys()),
+        )
+
+        propiedad_id = opciones_propiedades[
+            propiedad_seleccionada
+        ]
+
+        propiedad = obtener_propiedad_por_id(
+            propiedad_id
+        )
+
+        if propiedad:
+
+            (
+                propiedad_id,
+                titulo_db,
+                ciudad_db,
+                tipo_db,
+                precio_db,
+                habitaciones_db,
+                banos_db,
+                area_db,
+                descripcion_db,
+                fecha_db,
+            ) = propiedad
+
+            # ------------------------------------------------
+            # MOSTRAR INFORMACIÓN
+            # ------------------------------------------------
+
+            st.subheader(
+                "📋 Información de la propiedad"
+            )
+
+            info1, info2, info3 = st.columns(3)
+
+            with info1:
+
+                st.write(
+                    f"**Título:** {titulo_db}"
+                )
+
+                st.write(
+                    f"**Ciudad:** {ciudad_db}"
+                )
+
+                st.write(
+                    f"**Tipo:** {tipo_db}"
+                )
+
+            with info2:
+
+                st.write(
+                    f"**Precio:** {precio_db}"
+                )
+
+                st.write(
+                    f"**Habitaciones:** {habitaciones_db}"
+                )
+
+                st.write(
+                    f"**Baños:** {banos_db}"
+                )
+
+            with info3:
+
+                st.write(
+                    f"**Área:** {area_db} m²"
+                )
+
+                st.write(
+                    f"**ID:** {propiedad_id}"
+                )
+
+            if descripcion_db:
+
+                st.write(
+                    "**Descripción:**"
+                )
+
+                st.info(
+                    descripcion_db
+                )
+
+            st.divider()
+
+            # ------------------------------------------------
+            # TIPO DE CONTENIDO
+            # ------------------------------------------------
+
+            tipo_contenido = st.selectbox(
+                "🎯 ¿Qué quieres generar?",
+                [
+                    "Descripción profesional para portal inmobiliario",
+                    "Publicación para Instagram/Facebook",
+                    "Mensaje comercial para WhatsApp",
+                    "Respuesta rápida para un cliente",
+                    "Guion para Reel/TikTok de 30 segundos",
+                ],
+            )
+
+            # ------------------------------------------------
+            # DATOS EXTRA
+            # ------------------------------------------------
+
+            instrucciones_extra = st.text_area(
+                "✏️ Instrucciones adicionales (opcional)",
+                placeholder=(
+                    "Ejemplo: utiliza un tono elegante, "
+                    "destaca la ubicación y termina con "
+                    "un llamado a la acción."
+                ),
+                height=100,
+            )
+
+            # ------------------------------------------------
+            # BOTÓN GENERAR
+            # ------------------------------------------------
+
+            st.divider()
+
+            if st.button(
+                "✨ Generar contenido",
+                type="primary",
+                use_container_width=True,
+            ):
+
+                if not api_key:
 
                     st.error(
-                        "⚠️ Por favor ingresa tu "
-                        "Clave API de Gemini en la barra lateral."
+                        "⚠️ Debes introducir tu Gemini API Key "
+                        "en el menú lateral."
                     )
 
                 else:
 
+                    # ------------------------------------------------
+                    # PROMPT PROFESIONAL
+                    # ------------------------------------------------
+
                     prompt = f"""
-                    Actúa como un experto copywriter
-                    inmobiliario internacional y especialista
-                    en marketing digital global.
+Eres un experto en marketing inmobiliario
+especializado en propiedades de Colombia.
 
-                    Genera contenido comercial persuasivo
-                    y profesional adaptado estrictamente
-                    al idioma de salida:
-                    {idioma_contenido}.
+Tu trabajo es ayudar a un agente inmobiliario
+a vender y promocionar propiedades.
 
-                    DATOS DEL INMUEBLE:
+DATOS DE LA PROPIEDAD:
 
-                    Tipo:
-                    {tipo_propiedad}
+Título:
+{titulo_db}
 
-                    Ubicación:
-                    {ubicacion}
+Ciudad:
+{ciudad_db}
 
-                    Precio:
-                    {precio_moneda}
+Tipo:
+{tipo_db}
 
-                    Área:
-                    {area}
+Precio:
+{precio_db}
 
-                    Distribución:
-                    {habitaciones_banos}
+Habitaciones:
+{habitaciones_db}
 
-                    Estacionamiento:
-                    {garajes}
+Baños:
+{banos_db}
 
-                    Amenidades:
-                    {detalles_adicionales}
+Área:
+{area_db} m²
 
-                    Perfil del comprador:
-                    {perfil_cliente}
+Descripción original:
+{descripcion_db}
 
-                    Tono comercial:
-                    {tono_comercial}
+TIPO DE CONTENIDO SOLICITADO:
 
+{tipo_contenido}
 
-                    ESTRUCTURA DE LA RESPUESTA:
+INSTRUCCIONES ADICIONALES:
 
-                    1. 🏡 Ficha Técnica &
-                       Descripción Web Persuasiva
+{instrucciones_extra}
 
-                    2. 📱 Copy para Redes Sociales
-                       con hashtags relevantes
+REGLAS:
 
-                    3. 💬 Mensaje Vendedor
-                       para WhatsApp
+1. Escribe en español colombiano.
+2. No inventes características que no aparecen
+   en los datos suministrados.
+3. No inventes precios.
+4. No inventes ubicaciones.
+5. No inventes servicios.
+6. Utiliza lenguaje comercial profesional.
+7. El texto debe ser claro y atractivo.
+8. Evita exageraciones falsas.
+9. Si corresponde, incluye un llamado a la acción.
+10. Entrega directamente el contenido final.
+11. No expliques que eres una inteligencia artificial.
+12. No incluyas comentarios técnicos sobre el modelo.
 
-                    4. 🤖 Respuestas Rápidas
-                       Conversacionales para Chat
+Genera ahora el contenido solicitado.
+"""
 
-                    5. 🎬 Guion para Reel / TikTok
-                       de aproximadamente 30 segundos
+                    # ------------------------------------------------
+                    # SPINNER
+                    # ------------------------------------------------
 
-                    No inventes características que
-                    no estén presentes en los datos
-                    proporcionados.
-                    """
+                    with st.spinner(
+                        "🤖 Generando contenido..."
+                    ):
 
-
-                    # Modelos de respaldo
-                    modelos_a_probar = [
-                        "gemini-3.8-flash",
-                        "gemini-3.6-flash"
-                    ]
-
-
-                    exito = False
-                    resultado_ia = ""
-                    error_msg = ""
-
-
-                    try:
-
-                        client = genai.Client(
-                            api_key=gemini_api_key.strip()
+                        resultado = generar_con_ia(
+                            api_key=api_key,
+                            prompt=prompt,
                         )
 
-                    except Exception as e:
+                    # ------------------------------------------------
+                    # RESULTADO
+                    # ------------------------------------------------
+
+                    if resultado["ok"]:
+
+                        st.success(
+                            "✅ Contenido generado correctamente."
+                        )
+
+                        st.text_area(
+                            "📝 Resultado",
+                            value=resultado["texto"],
+                            height=400,
+                        )
+
+                        # Modelo utilizado.
+                        # Lo mostramos discretamente porque estamos
+                        # todavía en fase de desarrollo.
+                        st.caption(
+                            f"Motor IA utilizado: {resultado['modelo']}"
+                        )
+
+                        # ------------------------------------------------
+                        # COPIAR / REGENERAR
+                        # ------------------------------------------------
+
+                        st.divider()
+
+                        st.info(
+                            "Puedes copiar el contenido anterior "
+                            "y utilizarlo directamente en tus canales "
+                            "de venta."
+                        )
+
+                    else:
 
                         st.error(
-                            f"Error configurando Gemini: {e}"
+                            "❌ No fue posible generar el contenido."
                         )
 
-                        client = None
+                        st.warning(
+                            resultado["error"]
+                        )
 
 
-                    if client:
+# ============================================================
+# PIE DE PÁGINA
+# ============================================================
 
-                        with st.spinner(
-                            f"Generando contenido en "
-                            f"{idioma_contenido}..."
-                        ):
+st.divider()
 
-                            for modelo in modelos_a_probar:
+st.caption(
+    "InmoIA Pro — Global Real Estate AI"
+)
 
-                                for intento in range(2):
-
-                                    try:
-
-                                        response = (
-                                            client.models
-                                            .generate_content(
-                                                model=modelo,
-                                                contents=prompt
-                                            )
-                                        )
-
-                                        resultado_ia = (
-                                            response.text
-                                        )
-
-                                        exito = True
-
-                                        break
-
-
-                                    except Exception as e:
-
-                                        error_msg = str(e)
-
-                                        if (
-                                            "503" in str(e)
-                                            and intento == 0
-                                        ):
-
-                                            time.sleep(1.5)
-                                            continue
-
-                                        break
-
-
-                                if exito:
-                                    break
-
-
-                        if exito:
-
-                            st.success(
-                                "✅ Contenido generado "
-                                "correctamente."
-                            )
-
-                            st.markdown("---")
-
-                            st.markdown(
-                                resultado_ia
-                            )
-
-                        else:
-
-                            st.error(
-                                f"Error al conectar "
-                                f"con la IA: {error_msg}"
-                            )
-
-                            st.info(
-                                "Revisa tu API Key de Gemini "
-                                "y vuelve a intentarlo."
-                            )
+st.caption(
+    "Versión de desarrollo 2026"
+)
