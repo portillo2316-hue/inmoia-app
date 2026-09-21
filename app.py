@@ -16,9 +16,9 @@ query_params = st.query_params
 url_access = query_params.get("access", "")
 
 # ---------------------------------------------------------
-# BARRA LATERAL: ACCESO, PRECIO Y MÉTODOS DE PAGO
+# BARRA LATERAL: ACCESO Y CONFIGURACIÓN
 # ---------------------------------------------------------
-st.sidebar.title("🔐 Acceso Clientes / Global")
+st.sidebar.title("🔐 Acceso Clientes")
 
 clave_licencia = st.sidebar.text_input("Clave de Licencia:", type="password", value=url_access)
 licencias_validas = ["inmoia2026", "inmo2026", "admin"]
@@ -31,38 +31,7 @@ else:
     if clave_licencia:
         st.sidebar.error("Licencia incorrecta.")
     else:
-        st.sidebar.warning("Ingresa tu licencia o adquiere tu acceso.")
-    
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("💳 Suscripción InmoIA Pro")
-    st.sidebar.markdown("""
-    * **Valor mensual:** `$50.000 COP` / `15 USD`
-    * **Métodos habilitados:** Nequi, PSE, Tarjetas (Global)
-    """)
-    
-    st.sidebar.markdown(
-        """
-        <a href="https://mpago.li/tutu-link-de-ejemplo" target="_blank">
-            <div style="display: flex; align-items: center; justify-content: center; background-color: #009EE3; color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
-                💳 Pagar con PSE / Mercado Pago
-            </div>
-        </a>
-        """,
-        unsafe_allow_html=True
-    )
-    
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("📱 **Pago por Nequi (`3164142727`):** Escríbenos al WhatsApp con tu comprobante para entregarte tu clave manual.")
-    st.sidebar.markdown(
-        """
-        <a href="https://wa.me/573164142727?text=Hola,%20pagué%20por%20Nequi,%20quiero%20mi%20clave%20de%20InmoIA%20Pro" target="_blank">
-            <div style="display: flex; align-items: center; justify-content: center; background-color: #25D366; color: white; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px;">
-                💬 Soporte Nequi WhatsApp
-            </div>
-        </a>
-        """,
-        unsafe_allow_html=True
-    )
+        st.sidebar.warning("Ingresa tu licencia para activar el software.")
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("⚙️ Configuración IA Global")
@@ -74,11 +43,12 @@ idioma_contenido = st.sidebar.selectbox(
 )
 
 # ---------------------------------------------------------
-# CUERPO PRINCIPAL (LANDING PAGE PÚBLICA)
+# CUERPO PRINCIPAL (LANDING PAGE PÚBLICA CON PAGOS VISIBLES)
 # ---------------------------------------------------------
 st.title("🏠 InmoIA Pro: El Superpoder Global para Inmobiliarias con IA")
 st.markdown("### Multiplica tus ventas creando descripciones persuasivas, copies para redes y guiones de video en segundos y en cualquier idioma.")
 
+# BENEFICIOS PRINCIPALES
 col_a, col_b, col_c = st.columns(3)
 with col_a:
     st.markdown("✨ **Fichas Web Persuasivas**")
@@ -92,27 +62,61 @@ with col_c:
 
 st.markdown("---")
 
-with st.expander("🚀 Conoce todo lo que incluye InmoIA Pro (Funciones Globales)"):
+# 💳 SECCIÓN DE PRECIO Y MÉTODOS DE PAGO VISIBLE EN PORTADA
+st.subheader("💳 Planes y Suscripción InmoIA Pro")
+col_pago1, col_pago2 = st.columns(2)
+
+with col_pago1:
     st.markdown("""
-    * 🎯 **Personalización Automática:** Adaptación al perfil del cliente (familias, inversores globales, jóvenes).
-    * 🌍 **Multilingüe Real:** Genera contenido nativo adaptado a los mercados de América, Europa y más.
-    * 📱 **Respuestas Rápidas para WhatsApp:** Sugerencias automáticas de textos para cerrar ventas en chats.
+    #### 🚀 Acceso Mensual Ilimitado
+    * **Precio:** `$50.000 COP` / `15 USD` al mes
+    * **Incluye:** Generación multilingüe, perfiles de clientes objetivo, respuestas para WhatsApp y guiones para redes.
+    * **Pago Automático:** PSE, Tarjetas de Crédito/Débito y Mercado Pago.
     """)
+    st.markdown(
+        """
+        <a href="https://mpago.li/tutu-link-de-ejemplo" target="_blank">
+            <div style="display: flex; align-items: center; justify-content: center; background-color: #009EE3; color: white; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">
+                💳 Pagar Suscripción ($50.000 COP / 15 USD)
+            </div>
+        </a>
+        """,
+        unsafe_allow_html=True
+    )
+
+with col_pago2:
+    st.markdown("""
+    #### 📱 Pago Directo por Nequi
+    * **Número Nequi:** `316 414 2727`
+    * **Proceso:** Realiza la transferencia de `$50.000 COP` e infórmanos por WhatsApp enviando tu comprobante para entregarte tu clave de licencia al instante.
+    """)
+    st.markdown(
+        """
+        <a href="https://wa.me/573164142727?text=Hola,%20pagué%20por%20Nequi,%20quiero%20mi%20clave%20de%20InmoIA%20Pro" target="_blank">
+            <div style="display: flex; align-items: center; justify-content: center; background-color: #25D366; color: white; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">
+                💬 Enviar Comprobante por WhatsApp (3164142727)
+            </div>
+        </a>
+        """,
+        unsafe_allow_html=True
+    )
+
+st.markdown("---")
 
 # ---------------------------------------------------------
-# ZONA PROTEGIDA
+# ZONA PROTEGIDA (PANEL DE TRABAJO)
 # ---------------------------------------------------------
 if not acceso_concedido:
-    st.info("💡 **Vista previa bloqueada.** Adquiere tu suscripción o ingresa tu clave de licencia en la barra lateral para desbloquear el generador global.")
+    st.info("💡 **El generador está bloqueado.** Realiza tu pago arriba o ingresa tu clave de licencia en la barra lateral para desbloquear el panel operativo.")
     
-    with st.expander("👀 Ver ejemplo de lo que genera InmoIA Pro"):
+    with st.expander("👀 Ver ejemplo del contenido generado"):
         st.markdown("""
         * **Ficha Web:** *Espectacular apartamento moderno con vista panorámica...*
         * **WhatsApp:** *¡Oportunidad única! Apartamento de 90m² con piscina...*
         * **Reel/TikTok:** *[Gancho global] ¿Buscas el hogar de tus sueños? Mira esto...*
         """)
 else:
-    st.success("🚀 ¡Bienvenido al panel operativo global de InmoIA Pro! Configura los datos de tu inmueble:")
+    st.success("🚀 ¡Bienvenido al panel operativo de InmoIA Pro! Configura los datos de tu inmueble:")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -156,7 +160,6 @@ else:
             5. 🎬 **Guion para Reel / TikTok (30 seg)**
             """
 
-            # Modelos estables con doble respaldo automático
             modelos_a_probar = ["gemini-3.8-flash", "gemini-3.6-flash"]
             exito = False
             resultado_ia = ""
