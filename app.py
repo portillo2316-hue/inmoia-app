@@ -1,15 +1,19 @@
 import streamlit as st
 from google import genai
 
+# Configuración inicial de la página
 st.set_page_config(
-    page_title="InmoIA Pro - Generador Inmobiliario",
+    page_title="InmoIA Pro - Generador Inmobiliario con IA",
     page_icon="🏠",
     layout="wide"
 )
 
-st.sidebar.title("🔐 Acceso InmoIA Pro")
-clave_licencia = st.sidebar.text_input("Ingresa tu Clave de Licencia:", type="password")
+# ---------------------------------------------------------
+# BARRA LATERAL: ACCESO Y CONFIGURACIÓN
+# ---------------------------------------------------------
+st.sidebar.title("🔐 Acceso Clientes")
 
+clave_licencia = st.sidebar.text_input("Clave de Licencia:", type="password")
 licencias_validas = ["inmoia2026", "inmo2026", "admin"]
 
 if clave_licencia.strip().lower() in licencias_validas:
@@ -18,33 +22,63 @@ if clave_licencia.strip().lower() in licencias_validas:
 else:
     acceso_concedido = False
     if clave_licencia:
-        st.sidebar.error("Clave de licencia incorrecta.")
+        st.sidebar.error("Licencia incorrecta.")
     else:
-        st.sidebar.warning("Por favor ingresa tu clave de licencia para operar.")
+        st.sidebar.warning("Ingresa tu licencia para desbloquear el generador.")
+    
     st.sidebar.markdown("---")
-    st.sidebar.subheader("💳 ¿Adquirir Licencia?")
-    st.sidebar.info("Comunícate con soporte para habilitar tu acceso mensual de forma inmediata.")
+    st.sidebar.subheader("💳 ¿Quieres tu acceso?")
+    st.sidebar.info("Obtén tu licencia mensual y automatiza tus inmuebles hoy mismo.")
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("⚙️ Configuración de IA")
+st.sidebar.subheader("⚙️ Configuración IA")
 gemini_api_key = st.sidebar.text_input("Clave API Gemini:", type="password")
-idioma_contenido = st.sidebar.selectbox("Idioma del contenido:", ["Español", "Inglés", "Portugués"])
+idioma_contenido = st.sidebar.selectbox("Idioma de salida:", ["Español", "Inglés", "Portugués"])
 
-st.title("🏠 InmoIA Global: Generador Multilingüe de Propiedades")
-st.markdown("Crea la ficha web, copies para redes, mensajes de WhatsApp y guiones de video en segundos.")
+# ---------------------------------------------------------
+# CUERPO PRINCIPAL (LANDING PAGE PÚBLICA + HERO)
+# ---------------------------------------------------------
+st.title("🏠 InmoIA Pro: El Superpoder de las Inmobiliarias con Inteligencia Artificial")
+st.markdown("### Multiplica tus ventas creando descripciones persuasivas, copies para redes y guiones de video en segundos.")
 
+# Sección pública de venta / enganche para cualquier visitante
+col_a, col_b, col_c = st.columns(3)
+with col_a:
+    st.markdown("✨ **Fichas Web Persuasivas**")
+    st.caption("Redactadas por expertos para enamorar a los compradores desde el primer párrafo.")
+with col_b:
+    st.markdown("📱 **Redes Sociales & WhatsApp**")
+    st.caption("Copies listos para Instagram, Facebook y chats de ventas con un solo clic.")
+with col_c:
+    st.markdown("🎬 **Guiones para Reels / TikTok**")
+    st.caption("Estructuras de video diseñadas para captar la atención de inmediato.")
+
+st.markdown("---")
+
+# ---------------------------------------------------------
+# ZONA PROTEGIDA (SOLO CON LICENCIA ACTIVA)
+# ---------------------------------------------------------
 if not acceso_concedido:
-    st.info("👈 Por favor ingresa una clave de licencia válida en la barra lateral para desbloquear el generador.")
-else:
-    col1, col2 = st.columns(2)
+    st.info("💡 **Vista previa bloqueada.** Para acceder al generador de contenido y empezar a crear fichas comerciales, ingresa una clave de licencia válida en la barra lateral izquierda.")
     
+    # Ejemplo visual para que el cliente sepa qué se está perdiendo
+    with st.expander("👀 Ver ejemplo de lo que genera InmoIA Pro"):
+        st.markdown("""
+        * **Ficha Web:** *Espectacular apartamento moderno en Medellín con vista panorámica...*
+        * **WhatsApp:** *¡Oportunidad única! Apartamento de 90m² con piscina y seguridad 24/7...*
+        * **Reel/TikTok:** *[Gancho de 3 segundos] ¿Buscas el hogar de tus sueños en la mejor zona? Mira esto...*
+        """)
+else:
+    st.success("🚀 ¡Bienvenido al panel operativo de InmoIA Pro! Configura los datos de tu inmueble abajo:")
+    
+    col1, col2 = st.columns(2)
     with col1:
         tipo_propiedad = st.selectbox("Tipo de Inmueble", ["Apartamento", "Casa", "Local Comercial", "Oficina", "Lote / Terreno"])
         precio_moneda = st.text_input("Precio y Moneda", "220.000 USD")
         ubicacion = st.text_input("Ubicación (Ciudad / Barrio)", "Medellín")
         
     with col2:
-        area = st.text_input("Área construida (m² o pies²)", "90 m²")
+        area = st.text_input("Área construida", "90 m²")
         garajes = st.text_input("Estacionamiento / Garajes", "2 parqueaderos")
         habitaciones_banos = st.text_input("Habitaciones y Baños", "3 habitaciones, 2 baños")
 
@@ -78,7 +112,7 @@ else:
 
                 with st.spinner("Generando contenido inmobiliario con inteligencia artificial..."):
                     response = client.models.generate_content(
-                        model="gemini-3.6-flash",
+                        model="gemini-2.5-flash",
                         contents=prompt,
                     )
                     resultado_ia = response.text
